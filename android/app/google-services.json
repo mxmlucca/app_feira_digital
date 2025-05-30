@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "171373392494",
+    "firebase_url": "https://feira-digital-mxmlucca-default-rtdb.firebaseio.com",
+    "project_id": "feira-digital-mxmlucca",
+    "storage_bucket": "feira-digital-mxmlucca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:171373392494:android:3a54c91b38973763df2c7f",
+        "android_client_info": {
+          "package_name": "com.example.app_feira_digital"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRBisKGStgM0-tmS87n1H-hUST521hvnE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
