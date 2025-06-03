@@ -9,9 +9,12 @@ class HomeScreen extends StatelessWidget {
   Future<void> _handleLogout(BuildContext context) async {
     try {
       await FirebaseAuth.instance.signOut();
-      if (context.mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
+      // Use popUntil to clear the navigation stack and trigger AuthWrapper
+      // if (context.mounted) {
+      //   Navigator.of(
+      //     context,
+      //   ).pushNamedAndRemoveUntil('/login', (route) => false);
+      // }
     } catch (e) {
       print('Erro ao fazer logout: $e');
       if (context.mounted) {

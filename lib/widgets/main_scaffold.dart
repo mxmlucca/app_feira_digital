@@ -7,7 +7,8 @@ import '../screens/agenda_screen.dart';
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
 
-  static const String routeName = '/main-scaffold';
+  static const String routeName =
+      '/main-scaffold'; // Mantive o seu nome de rota
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -16,11 +17,14 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    HomeScreen(), // Índice 0
-    ExpositorListScreen(), // Índice 1
-    MapaScreen(), // Índice 2
-    AgendaScreen(), // Índice 3
+  // Definindo as telas diretamente aqui.
+  // Se elas se tornarem StatefulWidgets e precisarem de argumentos
+  // ou de serem reconstruídas de forma diferente, esta abordagem pode precisar de ajuste.
+  static final List<Widget> _widgetOptions = <Widget>[
+    const HomeScreen(),
+    const ExpositorListScreen(),
+    const MapaScreen(),
+    const AgendaScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -32,7 +36,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
+      body: IndexedStack(index: _selectedIndex, children: _widgetOptions),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -57,10 +61,8 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.surface,
-        showUnselectedLabels: true,
+        // O estilo virá do BottomNavigationBarThemeData em main.dart
         onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
       ),
     );
   }

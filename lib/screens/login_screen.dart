@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// Supondo que as suas cores kCorPrimaria e kCorSecundaria estão definidas no main.dart
+// e são acessíveis aqui via Theme.of(context) ou importadas de um ficheiro de constantes.
+// Para este exemplo, vou usar cores diretas baseadas na sua imagem.
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
-  // static const String routeName = '/login'; // Já está no main.dart
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -13,58 +15,62 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>(); // Chave para o formulário
+  final _formKey = GlobalKey<FormState>();
 
   String _message = '';
-  bool _isLoading = false; // Para feedback de carregamento no botão
+  bool _isLoading = false;
+  bool _obscurePassword = true; // Para controlar a visibilidade da senha
+
+  // Cores baseadas na sua imagem de referência
+  final Color corDeFundo = const Color(0xFFFFEB3B); // Amarelo forte
+  final Color corDoBotao = const Color(0xFFC2185B); // Um magenta/rosa escuro
+  final Color corDoCampo = const Color.fromARGB(255, 31, 37, 47);
+  final Color corTextoLink = const Color.fromARGB(
+    255,
+    48,
+    63,
+    159,
+  ); // Mesma cor dos campos para os links
 
   void _handleLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // Valida o formulário
       setState(() {
         _isLoading = true;
         _message = 'A autenticar...';
       });
-
       String email = _emailController.text.trim();
       String password = _passwordController.text.trim();
-
       try {
         UserCredential userCredential = await FirebaseAuth.instance
             .signInWithEmailAndPassword(email: email, password: password);
-
         print('Login bem-sucedido na LoginScreen: ${userCredential.user?.uid}');
-        // A navegação agora é tratada pelo AuthChecker no main.dart
-        // Não precisamos de setState para _message de sucesso ou Navigator.push aqui.
-        // Se o login for bem-sucedido, o authStateChanges vai disparar e o AuthChecker fará a navegação.
+        if (mounted)
+          setState(() {
+            _message = '';
+          });
       } on FirebaseAuthException catch (e) {
-        print('Erro de Firebase Auth: ${e.code}');
-        String errorMessage =
-            'Ocorreu um erro. Tente novamente.'; // Mensagem padrão
+        String errorMessage = 'Ocorreu um erro.';
         if (e.code == 'user-not-found' || e.code == 'invalid-email') {
-          errorMessage = 'Nenhum utilizador encontrado para esse email.';
+          errorMessage = 'Email não encontrado ou inválido.';
         } else if (e.code == 'wrong-password' ||
             e.code == 'invalid-credential') {
-          errorMessage = 'Email ou senha incorreta.';
-        } else if (e.message != null) {
-          errorMessage = e.message!;
+          errorMessage = 'Senha incorreta.';
+        } else {
+          errorMessage = e.message ?? errorMessage;
         }
         setState(() {
           _message = errorMessage;
         });
       } catch (e) {
-        print('Erro inesperado: $e');
         setState(() {
-          _message = 'Ocorreu um erro inesperado. Tente novamente.';
+          _message = 'Ocorreu um erro inesperado.';
         });
       } finally {
-        if (mounted) {
+        if (mounted)
           setState(() {
             _isLoading = false;
-            // Limpa a mensagem "A autenticar..." se não houve erro que a substituiu
             if (_message == 'A autenticar...') _message = '';
           });
-        }
       }
     }
   }
@@ -78,107 +84,181 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Obtém o tema para usar cores e estilos definidos globalmente
-    final theme = Theme.of(context);
+    // Usar o tema global para consistência, mas permitir sobrescrever cores específicas
+    // final theme = Theme.of(context);
 
     return Scaffold(
-      // A AppBar agora herdará o estilo do appBarTheme em main.dart
-      appBar: AppBar(
-        title: const Text('Login - App Feira Digital'),
-        // Não precisamos de centerTitle: true se já estiver no tema
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                // TODO: Adicionar um logo aqui, se desejar
-                // Image.asset('assets/images/seu_logo.png', height: 100),
-                // const SizedBox(height: 32.0),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(
-                      Icons.email_outlined,
-                    ), // Ícone um pouco diferente
+      // Não teremos AppBar para seguir o design do Figma
+      // appBar: AppBar(
+      //   title: const Text('Login'),
+      //   automaticallyImplyLeading: false,
+      // ),
+      body: SafeArea(
+        // Garante que o conteúdo não fica sob as áreas do sistema (notch, etc)
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 32.0,
+              vertical: 24.0,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  // 1. Imagem do Logo
+                  Image.asset(
+                    'assets/images/logoTrilhos.png', // SUBSTITUA PELO CAMINHO DO SEU LOGO
+                    height: 120, // Ajuste a altura conforme necessário
+                    // width: 200, // Ajuste a largura se precisar
                   ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Por favor, insira o seu email';
-                    }
-                    if (!value.contains('@') || !value.contains('.')) {
-                      return 'Por favor, insira um email válido';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Senha',
-                    prefixIcon: Icon(
-                      Icons.lock_outline,
-                    ), // Ícone um pouco diferente
-                    // Para adicionar um botão de "mostrar/esconder senha",
-                    // precisaria de um StatefulWidget e uma variável de estado para controlar a visibilidade.
+                  const SizedBox(height: 48.0), // Espaço maior após o logo
+                  // 2. Campo de Email
+                  TextFormField(
+                    controller: _emailController,
+                    style: const TextStyle(
+                      color: Colors.white,
+                    ), // Cor do texto dentro do campo
+                    decoration: InputDecoration(
+                      hintText: 'Email', // Usar hintText para o placeholder
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                      filled: true,
+                      fillColor: corDoCampo, // Cor de fundo do campo
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide:
+                            BorderSide.none, // Sem borda visível inicialmente
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.email_outlined,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty)
+                        return 'Insira o seu email';
+                      if (!value.contains('@') || !value.contains('.'))
+                        return 'Insira um email válido';
+                      return null;
+                    },
                   ),
-                  obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor, insira a sua senha';
-                    }
-                    if (value.length < 6) {
-                      return 'A senha deve ter pelo menos 6 caracteres';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24.0),
-                ElevatedButton(
-                  // O estilo virá do elevatedButtonTheme em main.dart
-                  onPressed: _isLoading ? null : _handleLogin,
-                  child:
-                      _isLoading
-                          ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.0,
-                            ),
-                          )
-                          : const Text('Entrar'),
-                ),
-                const SizedBox(height: 16.0),
-                if (_message.isNotEmpty &&
-                    !_message.contains('A autenticar...'))
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      _message,
-                      style: TextStyle(
-                        color:
-                            theme
-                                .colorScheme
-                                .error, // Usa a cor de erro do tema
+                  const SizedBox(height: 16.0),
+
+                  // 3. Campo de Senha
+                  TextFormField(
+                    controller: _passwordController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Senha',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                      filled: true,
+                      fillColor: corDoCampo,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.lock_outline,
+                        color: Colors.white70,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: Colors.white70,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                    ),
+                    obscureText: _obscurePassword,
+                    validator: (value) {
+                      if (value == null || value.isEmpty)
+                        return 'Insira a sua senha';
+                      if (value.length < 6)
+                        return 'A senha deve ter pelo menos 6 caracteres';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 28.0), // Espaço maior antes do botão
+                  // 4. Botão Entrar
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: corDoBotao,
+                      foregroundColor: Colors.white, // Cor do texto
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
-                      textAlign: TextAlign.center,
+                    ),
+                    onPressed: _isLoading ? null : _handleLogin,
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 3.0,
+                              ),
+                            )
+                            : const Text('Entrar'),
+                  ),
+                  const SizedBox(height: 16.0),
+
+                  // Mensagem de erro
+                  if (_message.isNotEmpty &&
+                      !_message.contains('A autenticar...'))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                      child: Text(
+                        _message,
+                        // Usar uma cor que contraste com o amarelo de fundo para o erro
+                        style: TextStyle(
+                          color: corDoBotao,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                  // 5. Links Adicionais
+                  TextButton(
+                    onPressed: () {
+                      // TODO: Implementar lógica de recuperar senha
+                      print('Botão Recuperar Senha pressionado');
+                    },
+                    child: Text(
+                      'Recuperar Senha',
+                      style: TextStyle(color: corTextoLink),
                     ),
                   ),
-                // TODO: Adicionar links para "Esqueceu a senha?" ou "Criar conta"
-                // TextButton(
-                //   onPressed: () { /* Navegar para criar conta */ },
-                //   child: Text('Não tem uma conta? Crie uma'),
-                // ),
-              ],
+                  TextButton(
+                    onPressed: () {
+                      // TODO: Implementar lógica de cadastrar com vendedor
+                      print('Botão Cadastrar com Vendedor pressionado');
+                    },
+                    child: Text(
+                      'Cadastrar como Vendedor',
+                      style: TextStyle(color: corTextoLink),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

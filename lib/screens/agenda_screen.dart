@@ -73,6 +73,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_agenda_screen',
         onPressed: () {
           Navigator.pushNamed(context, FeiraFormScreen.routeNameAdd);
         },
