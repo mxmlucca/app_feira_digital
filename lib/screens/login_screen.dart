@@ -122,9 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ), // Cor do texto dentro do campo
                     decoration: InputDecoration(
                       hintText: 'Email', // Usar hintText para o placeholder
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                      ),
+                      hintStyle: TextStyle(color: Colors.white),
                       filled: true,
                       fillColor: corDoCampo, // Cor de fundo do campo
                       border: OutlineInputBorder(
@@ -132,10 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderSide:
                             BorderSide.none, // Sem borda visível inicialmente
                       ),
-                      prefixIcon: const Icon(
-                        Icons.email_outlined,
-                        color: Colors.white70,
-                      ),
+                      prefixIcon: const Icon(Icons.email_outlined),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
@@ -154,25 +149,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Senha',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                      ),
+                      hintStyle: TextStyle(color: Colors.white),
                       filled: true,
                       fillColor: corDoCampo,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
                         borderSide: BorderSide.none,
                       ),
-                      prefixIcon: const Icon(
-                        Icons.lock_outline,
-                        color: Colors.white70,
-                      ),
+                      prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined,
-                          color: Colors.white70,
                         ),
                         onPressed: () {
                           setState(() {

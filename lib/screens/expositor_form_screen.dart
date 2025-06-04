@@ -65,7 +65,7 @@ class _ExpositorFormScreenState extends State<ExpositorFormScreen> {
     );
 
     _numeroEstandeController = TextEditingController(
-      text: widget.expositor?.numeroEstande ?? '',
+      text: widget.expositor?.numeroEstande ?? 'N/S',
     );
 
     // Se estiver a editar e o expositor tiver uma categoria/situação, pré-selecione-a
@@ -156,6 +156,7 @@ class _ExpositorFormScreenState extends State<ExpositorFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -170,10 +171,13 @@ class _ExpositorFormScreenState extends State<ExpositorFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              // CAMPO NOME DO EXPOSITOR
               TextFormField(
                 controller: _nomeController,
                 decoration: const InputDecoration(
-                  labelText: 'Nome do Expositor',
+                  hintText: 'Nome do Expositor',
+                  filled: true,
+                  prefixIcon: Icon(Icons.person),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -181,12 +185,17 @@ class _ExpositorFormScreenState extends State<ExpositorFormScreen> {
                   }
                   return null;
                 },
+                style: TextStyle(color: theme.colorScheme.onSurface),
               ),
+
               const SizedBox(height: 16),
+
+              // CAMPO CONTATO DO EXPOSITOR
               TextFormField(
                 controller: _contatoController,
                 decoration: const InputDecoration(
-                  labelText: 'Contato (Telefone, Email, etc.)',
+                  hintText: 'Contato (Telefone, Email, etc.)',
+                  prefixIcon: Icon(Icons.phone),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -194,27 +203,43 @@ class _ExpositorFormScreenState extends State<ExpositorFormScreen> {
                   }
                   return null;
                 },
+                style: TextStyle(color: theme.colorScheme.onSurface),
               ),
+
               const SizedBox(height: 16),
+
+              // CAMPO DESCRIÇÃO CURTA DO EXPOSITOR
               TextFormField(
                 controller: _descricaoController,
-                decoration: const InputDecoration(labelText: 'Descrição Curta'),
-                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Descrição Curta',
+                  prefixIcon: Icon(Icons.description),
+                  alignLabelWithHint: true, // Faz o label/ícone alinhar ao topo
+                ),
+                maxLines: 1,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor, insira uma descrição';
                   }
                   return null;
                 },
+                style: TextStyle(color: theme.colorScheme.onSurface),
               ),
+
               const SizedBox(height: 16),
+
+              // CAMPO TIPO DE PRODUTO/SERVIÇO (apenas Dropdown, com ícone e hint)
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
-                  labelText: 'Categoria (Tipo de Produto/Serviço)',
+                  hintText: 'Tipo de Produto/Serviço',
+                  prefixIcon: Icon(Icons.category),
                   border: OutlineInputBorder(),
                 ),
                 value: _categoriaSelecionada,
-                hint: const Text('Selecione uma categoria'),
+                hint: const Text(
+                  'Selecione o tipo de produto/serviço',
+                  style: TextStyle(color: Colors.white),
+                ),
                 items:
                     kCategoriasExpositor.map((String categoria) {
                       return DropdownMenuItem<String>(
@@ -228,29 +253,39 @@ class _ExpositorFormScreenState extends State<ExpositorFormScreen> {
                   });
                 },
                 validator:
-                    (value) => value == null ? 'Selecione uma categoria' : null,
+                    (value) =>
+                        value == null
+                            ? 'Selecione o tipo de produto/serviço'
+                            : null,
+                style: TextStyle(color: theme.colorScheme.onSurface),
               ),
 
-              // CAMPO NÚMERO DO ESTANDE
               const SizedBox(height: 16),
+
+              // CAMPO NÚMERO DO ESTANDE (opcional, pode ser texto ou número)
               TextFormField(
                 controller: _numeroEstandeController,
                 decoration: const InputDecoration(
-                  labelText: 'Número do Estande (Opcional)',
+                  hintText: 'Nº do Estande (Opcional)',
+                  prefixIcon: Icon(Icons.location_on),
                 ),
-                keyboardType:
-                    TextInputType.text, // Pode ser número ou texto como "Palco"
+                style: TextStyle(color: theme.colorScheme.onSurface),
               ),
 
-              // CAMPO SITUAÇÃO DO EXPOSITOR - Usando Dropdown
               const SizedBox(height: 16),
+
+              // CAMPO SITUAÇÃO DO EXPOSITOR
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
-                  labelText: 'Situação do Expositor',
+                  hintText: 'Situação do Expositor',
+                  prefixIcon: Icon(Icons.info),
                   border: OutlineInputBorder(),
                 ),
                 value: _situacaoSelecionada,
-                hint: const Text('Selecione a situação'),
+                hint: const Text(
+                  'Selecione a situação',
+                  style: TextStyle(color: Colors.white),
+                ),
                 items:
                     kSituacoesExpositor.map((String situacao) {
                       return DropdownMenuItem<String>(
@@ -263,6 +298,7 @@ class _ExpositorFormScreenState extends State<ExpositorFormScreen> {
                     _situacaoSelecionada = novoValor;
                   });
                 },
+                style: TextStyle(color: theme.colorScheme.onSurface),
                 validator:
                     (value) => value == null ? 'Selecione a situação' : null,
               ),

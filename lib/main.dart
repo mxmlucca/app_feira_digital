@@ -66,7 +66,7 @@ class MyApp extends StatelessWidget {
         // Definição das cores tema do aplicativo
         colorScheme: ColorScheme.fromSeed(
           seedColor: kCorPrimaria, // Cor semente para gerar o esquema de cores
-          brightness: Brightness.light, // Define o brilho do tema como claro
+          brightness: Brightness.light, // Define o brilho do tema como escuro
           primary: kCorPrimaria, // Cor primária do tema
           secondary: kCorSecundaria, // Cor secundária do tema
           surface: kCorSecundaria, // Cor de superfície do tema
@@ -136,17 +136,20 @@ class MyApp extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16.0,
             vertical: 14.0,
-          ),
-          labelStyle: TextStyle(
-            color: Colors.grey.shade700,
           ), // Cor do rótulo do campo de entrada
+
           hintStyle: TextStyle(
-            color: Colors.grey.shade500,
+            color: Colors.white,
           ), // Cor do texto de dica do campo de entrada
           errorStyle: const TextStyle(
             fontSize: 12.0,
           ), // Estilo do texto de erro do campo de entrada
           floatingLabelBehavior: FloatingLabelBehavior.auto,
+          // Icones de prefixo e sufixo
+          prefixIconColor: Colors.white, // Cor do ícone de prefixo
+          suffixIconColor: Colors.white, // Cor do ícone de sufixo
+          // Estilo do texto digitado pelo usuário
+          // Para estilizar o texto digitado, defina o style diretamente no TextField/TextFormField.
         ),
 
         /// Tema dos botões elevados
@@ -178,9 +181,8 @@ class MyApp extends StatelessWidget {
 
         /// Tema dos botões flutuantes
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: kCorSecundaria, // Cor de fundo do botão flutuante
-          foregroundColor:
-              kCorTextoSecundaria, // Cor do texto do botão flutuante
+          backgroundColor: kCorPrimaria, // Cor de fundo do botão flutuante
+          foregroundColor: kCorTextoPrimaria, // Cor do texto do botão flutuante
         ),
 
         /// Tema da barra de navegação inferior

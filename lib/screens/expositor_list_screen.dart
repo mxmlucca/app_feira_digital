@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
+import 'dart:async'; // Para o Debouncer da pesquisa
 import '../models/expositor.dart';
 import '../services/firestore_service.dart';
 import 'expositor_form_screen.dart';
-// Se kCoresCategorias e kCategoriasExpositor estiverem em outro ficheiro, importe-os
-// import '../utils/app_constants.dart'; // Exemplo
+import 'expositor_detail_screen.dart'; // Importa a tela de detalhes
+import '../widgets/expositor_list_item.dart'; // Nosso widget de item de lista
 
-// Supondo que kCoresCategorias está definido aqui ou importado
+// Supondo que kCoresCategorias e kOrdemCategorias (ou kCategoriasExpositor)
+// estão definidas aqui ou importadas de um ficheiro de constantes.
+// const Map<String, Color> kCoresCategorias = { /* ... seu mapa de cores ... */ };
+// final List<String> kOrdemCategorias = [ /* ... sua ordem de categorias ... */ ];
+// Se kCategoriasExpositor é a lista que inclui "Outros" e é usada para os filtros:
+// final List<String> kFiltrosCategorias = ['Todos', ...kCategoriasExpositor];
+
+// Exemplo (coloque as suas definições reais)
 const Map<String, Color> kCoresCategorias = {
   'Artesanato': Colors.brown,
   'Alimentação': Colors.orange,
@@ -14,12 +22,9 @@ const Map<String, Color> kCoresCategorias = {
   'Serviços': Colors.teal,
   'Outros': Colors.grey,
 };
-
-// Supondo que kCategoriasExpositor (a lista de todas as categorias possíveis para ordenação das seções)
-// está definida aqui ou importada. É importante para a ordem das seções.
-// Se não tiver uma ordem específica, podemos pegar as categorias dos próprios expositores.
-// Para uma ordem definida, use algo como:
-final List<String> kOrdemCategorias = [
+// Usaremos esta lista para as abas, incluindo "Todos"
+final List<String> kAbasCategorias = [
+  'Todos',
   'Alimentação',
   'Bebidas',
   'Artesanato',
@@ -36,11 +41,135 @@ class ExpositorListScreen extends StatefulWidget {
   State<ExpositorListScreen> createState() => _ExpositorListScreenState();
 }
 
-class _ExpositorListScreenState extends State<ExpositorListScreen> {
-  // Não precisa mais do TickerProviderStateMixin se não tivermos mais TabBar aqui
+class _ExpositorListScreenState extends State<ExpositorListScreen>
+    with TickerProviderStateMixin {
   final FirestoreService _firestoreService = FirestoreService();
+  TabController? _tabController;
 
-  // As funções _navigateToForm e _removerExpositor permanecem as mesmas
+  final TextEditingController _searchController = TextEditingController();
+  String _searchTerm = '';
+  Timer? _debounce; // Para o debounce da pesquisa
+
+  // Lista de todos os expositores vinda do Firestore
+  List<Expositor> _todosExpositoresFirestore = [];
+  // Lista de expositores a ser exibida (após filtros e pesquisa)
+  List<Expositor> _expositoresFiltradosParaExibicao = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: kAbasCategorias.length, vsync: this);
+    _tabController!.addListener(_handleTabSelection); // Ouve mudanças de aba
+    _searchController.addListener(
+      _onSearchChanged,
+    ); // Ouve mudanças na pesquisa
+
+    // Carrega os expositores iniciais
+    _carregarEFiltrarExpositores();
+  }
+
+  @override
+  void dispose() {
+    _tabController?.removeListener(_handleTabSelection);
+    _tabController?.dispose();
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _handleTabSelection() {
+    if (_tabController != null && _tabController!.indexIsChanging) {
+      // A aba está a mudar, então precisamos de refiltrar
+      _filtrarExpositores();
+    } else if (_tabController != null &&
+        !_tabController!.indexIsChanging &&
+        mounted) {
+      // A aba foi selecionada (não apenas durante o swipe)
+      _filtrarExpositores();
+    }
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        // Verifica se o widget ainda está na árvore
+        setState(() {
+          _searchTerm = _searchController.text.toLowerCase().trim();
+          _filtrarExpositores();
+        });
+      }
+    });
+  }
+
+  void _carregarEFiltrarExpositores() {
+    // Ouve o stream de todos os expositores
+    _firestoreService.getExpositores().listen((listaDoFirestore) {
+      if (mounted) {
+        setState(() {
+          _todosExpositoresFirestore = listaDoFirestore;
+          _filtrarExpositores(); // Aplica os filtros e pesquisa atuais
+        });
+      }
+    });
+  }
+
+  void _filtrarExpositores() {
+    List<Expositor> listaAtual = List.from(
+      _todosExpositoresFirestore,
+    ); // Começa com todos
+
+    // 1. Filtrar por Categoria (da aba selecionada)
+    final String categoriaSelecionada =
+        kAbasCategorias[_tabController?.index ?? 0];
+    if (categoriaSelecionada != 'Todos') {
+      listaAtual =
+          listaAtual
+              .where((ex) => ex.tipoProdutoServico == categoriaSelecionada)
+              .toList();
+    }
+
+    // 2. Filtrar por Termo de Pesquisa
+    if (_searchTerm.isNotEmpty) {
+      listaAtual =
+          listaAtual.where((ex) {
+            return ex.nome.toLowerCase().contains(_searchTerm) ||
+                ex.descricao.toLowerCase().contains(_searchTerm) ||
+                ex.tipoProdutoServico.toLowerCase().contains(_searchTerm) ||
+                (ex.numeroEstande?.toLowerCase().contains(_searchTerm) ??
+                    false);
+          }).toList();
+    }
+
+    // 3. Ordenar
+    listaAtual.sort((a, b) {
+      bool aTemEstande = a.numeroEstande != null && a.numeroEstande!.isNotEmpty;
+      bool bTemEstande = b.numeroEstande != null && b.numeroEstande!.isNotEmpty;
+
+      if (aTemEstande && !bTemEstande) return -1;
+      if (!aTemEstande && bTemEstande) return 1;
+      if (aTemEstande && bTemEstande) {
+        int? numA = int.tryParse(a.numeroEstande!);
+        int? numB = int.tryParse(b.numeroEstande!);
+        if (numA != null && numB != null) {
+          if (numA != numB) return numA.compareTo(numB);
+        } else {
+          int compEstande = a.numeroEstande!.toLowerCase().compareTo(
+            b.numeroEstande!.toLowerCase(),
+          );
+          if (compEstande != 0) return compEstande;
+        }
+      }
+      // Se estandes são iguais ou ambos não têm, ordena por nome
+      return a.nome.toLowerCase().compareTo(b.nome.toLowerCase());
+    });
+
+    setState(() {
+      _expositoresFiltradosParaExibicao = listaAtual;
+    });
+  }
+
   void _navigateToForm({Expositor? expositor}) {
     Navigator.push(
       context,
@@ -51,10 +180,17 @@ class _ExpositorListScreenState extends State<ExpositorListScreen> {
           arguments: expositor,
         ),
       ),
-    );
+    ).then((_) {
+      // Quando volta do formulário, pode ser que a lista precise ser atualizada
+      // _carregarEFiltrarExpositores(); // O Stream já faz isso, mas um setState pode forçar
+      // Se o stream não pegar mudanças imediatas (o que não deve acontecer),
+      // um setState aqui pode ajudar a refazer a filtragem com os dados mais recentes.
+      _filtrarExpositores(); // Para garantir que a lista reflete adições/edições
+    });
   }
 
   Future<void> _removerExpositor(String id) async {
+    /* ... (código existente, sem alterações) ... */
     bool confirmar =
         await showDialog(
           context: context,
@@ -78,280 +214,141 @@ class _ExpositorListScreenState extends State<ExpositorListScreen> {
           },
         ) ??
         false;
-
     if (confirmar) {
       try {
         await _firestoreService.removerExpositor(id);
-        if (mounted) {
+        if (mounted)
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Expositor removido com sucesso!')),
           );
-        }
       } catch (e) {
-        if (mounted) {
+        if (mounted)
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Erro ao remover expositor: $e')),
           );
-        }
       }
     }
   }
 
-  // Nova função para construir o item da lista (para reutilização)
-  Widget _buildExpositorItem(Expositor expositor) {
-    final Color corDaCategoria =
-        kCoresCategorias[expositor.tipoProdutoServico] ?? Colors.black54;
-
-    return Card(
-      // Usando o CardTheme definido globalmente ou personalizações locais
-      // margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      // elevation: 2.0,
-      child: InkWell(
-        onTap: () {
-          // TODO: Navegar para ExpositorDetailScreen(expositor: expositor)
-          print('Expositor selecionado: ${expositor.nome}');
-        },
-        borderRadius: BorderRadius.circular(10.0), // Do CardTheme
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 60,
-                child: Center(
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: corDaCategoria,
-                    foregroundColor: Colors.white,
-                    child: Text(
-                      expositor.numeroEstande != null &&
-                              expositor.numeroEstande!.isNotEmpty
-                          ? expositor.numeroEstande!
-                          : 'S/N',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      expositor.nome,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Categoria: ${expositor.tipoProdutoServico}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (expositor.descricao.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        expositor.descricao,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: 80,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.edit_note,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      tooltip: 'Editar',
-                      iconSize: 24,
-                      onPressed: () {
-                        _navigateToForm(expositor: expositor);
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.delete_outline,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      tooltip: 'Remover',
-                      iconSize: 24,
-                      onPressed: () {
-                        if (expositor.id != null) {
-                          _removerExpositor(expositor.id!);
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+  void _navigateToDetail(Expositor expositor) {
+    print('Navegando para detalhes do expositor: ${expositor.nome}');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExpositorDetailScreen(expositor: expositor),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context); // Para usar no estilo da AppBar
+    // Cores do seu Figma
+    final Color corFundoPesquisaCategorias =
+        Colors.white; // Ou a cor cinza clara do seu figma
+    final Color corTextoCategorias =
+        Colors.black87; // Ou a cor dos textos de categoria
+    final Color corIconePesquisa = Colors.grey.shade600;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Expositores da Feira'),
-        // Não precisamos mais da TabBar aqui, a menos que queira manter
-        // A lógica de agrupamento será feita diretamente no corpo
+        title: const Text('Feirantes'), // Ou 'Expositores'
+        // A cor e o estilo vêm do ThemeData
       ),
-      body: StreamBuilder<List<Expositor>>(
-        stream: _firestoreService.getExpositores(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Erro: ${snapshot.error}'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Nenhum expositor cadastrado.'));
-          }
-
-          final todosExpositores = snapshot.data!;
-
-          // 1. Agrupar expositores por categoria
-          Map<String, List<Expositor>> expositoresPorCategoria = {};
-          for (var expositor in todosExpositores) {
-            // Se a categoria não existe no mapa, cria uma nova lista
-            expositoresPorCategoria
-                .putIfAbsent(expositor.tipoProdutoServico, () => [])
-                .add(expositor);
-          }
-
-          // 2. Ordenar os expositores dentro de cada categoria pelo número do estande
-          expositoresPorCategoria.forEach((categoria, listaDeExpositores) {
-            listaDeExpositores.sort((a, b) {
-              // Lógica de ordenação do estande:
-              // - Estandes com número vêm primeiro.
-              // - Entre estandes com número, ordena numericamente (se possível) ou alfabeticamente.
-              // - Estandes sem número (null ou vazio) vêm por último.
-
-              bool aTemEstande =
-                  a.numeroEstande != null && a.numeroEstande!.isNotEmpty;
-              bool bTemEstande =
-                  b.numeroEstande != null && b.numeroEstande!.isNotEmpty;
-
-              if (aTemEstande && !bTemEstande) return -1; // a vem primeiro
-              if (!aTemEstande && bTemEstande) return 1; // b vem primeiro
-              if (!aTemEstande && !bTemEstande)
-                return 0; // ambos sem estande, mantém ordem (ou ordena por nome)
-              // return a.nome.compareTo(b.nome); // se quiser ordenar por nome os sem estande
-
-              // Ambos têm estande, tenta comparar numericamente se possível
-              int? numA = int.tryParse(a.numeroEstande!);
-              int? numB = int.tryParse(b.numeroEstande!);
-
-              if (numA != null && numB != null) {
-                return numA.compareTo(numB); // Comparação numérica
-              }
-              return a.numeroEstande!.compareTo(
-                b.numeroEstande!,
-              ); // Comparação alfabética
-            });
-          });
-
-          // 3. Ordenar as categorias (usando kOrdemCategorias ou alfabeticamente)
-          List<String> categoriasOrdenadas;
-          if (kOrdemCategorias.isNotEmpty) {
-            // Se temos uma ordem preferencial
-            categoriasOrdenadas =
-                kOrdemCategorias
-                    .where((cat) => expositoresPorCategoria.containsKey(cat))
-                    .toList();
-            // Adicionar categorias que estão nos dados mas não na nossa lista de ordem (ex: "Outros")
-            expositoresPorCategoria.keys
-                .where((cat) => !categoriasOrdenadas.contains(cat))
-                .forEach((cat) {
-                  categoriasOrdenadas.add(cat);
-                });
-          } else {
-            // Senão, ordena alfabeticamente
-            categoriasOrdenadas = expositoresPorCategoria.keys.toList()..sort();
-          }
-
-          // 4. Construir a ListView agrupada
-          return ListView.builder(
-            itemCount: categoriasOrdenadas.length,
-            itemBuilder: (context, indexCategoria) {
-              String categoria = categoriasOrdenadas[indexCategoria];
-              List<Expositor> listaDaCategoria =
-                  expositoresPorCategoria[categoria]!;
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 12.0,
-                    ),
-                    child: Text(
-                      categoria,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color:
-                            kCoresCategorias[categoria] ??
-                            Theme.of(context).colorScheme.primary,
+      body: Column(
+        children: [
+          // BARRA DE PESQUISA
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Pesquisar por nome ou estande',
+                prefixIcon: Icon(Icons.search, color: corIconePesquisa),
+                filled: true,
+                fillColor: corFundoPesquisaCategorias,
+                // Usando o tema global, mas pode personalizar se quiser uma borda diferente
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    25.0,
+                  ), // Borda bem arredondada como no Figma
+                  borderSide:
+                      BorderSide
+                          .none, // Sem borda visível se o fundo já contrasta
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 20,
+                ),
+              ),
+            ),
+          ),
+          // ABAS DE CATEGORIA
+          TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            labelColor:
+                theme.colorScheme.primary, // Cor do texto da aba selecionada
+            unselectedLabelColor: corTextoCategorias,
+            indicatorColor:
+                theme.colorScheme.primary, // Cor do indicador da aba
+            indicatorWeight: 3.0,
+            tabs:
+                kAbasCategorias.map((String categoria) {
+                  return Tab(text: categoria);
+                }).toList(),
+          ),
+          // LISTA DE EXPOSITORES
+          Expanded(
+            child:
+                _expositoresFiltradosParaExibicao.isEmpty &&
+                        _searchTerm.isNotEmpty
+                    ? Center(
+                      child: Text(
+                        'Nenhum expositor encontrado para "${_searchController.text}".',
                       ),
+                    )
+                    : _expositoresFiltradosParaExibicao.isEmpty &&
+                        kAbasCategorias[_tabController?.index ?? 0] != 'Todos'
+                    ? Center(
+                      child: Text(
+                        'Nenhum expositor na categoria "${kAbasCategorias[_tabController?.index ?? 0]}".',
+                      ),
+                    )
+                    : _expositoresFiltradosParaExibicao.isEmpty
+                    ? const Center(
+                      child: Text('Nenhum expositor cadastrado ainda.'),
+                    )
+                    : ListView.builder(
+                      padding: const EdgeInsets.only(
+                        top: 8.0,
+                      ), // Espaço acima da lista
+                      itemCount: _expositoresFiltradosParaExibicao.length,
+                      itemBuilder: (context, index) {
+                        final expositor =
+                            _expositoresFiltradosParaExibicao[index];
+                        return ExpositorListItem(
+                          // Usando o widget customizado
+                          expositor: expositor,
+                          onTap:
+                              () => _navigateToDetail(
+                                expositor,
+                              ), // Ação ao clicar no card
+                          // Os botões de onEdit e onDelete foram removidos do item
+                          // A edição/remoção pode estar na tela de detalhes ou por um gesto (swipe)
+                        );
+                      },
                     ),
-                  ),
-                  // ListView aninhada para os expositores desta categoria
-                  // Usamos shrinkWrap e physics para que funcione dentro de outra ListView
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: listaDaCategoria.length,
-                    itemBuilder: (context, indexExpositor) {
-                      final expositor = listaDaCategoria[indexExpositor];
-                      // Reutiliza o widget de item que criámos antes
-                      return _buildExpositorItem(expositor);
-                    },
-                  ),
-                  if (indexCategoria <
-                      categoriasOrdenadas.length -
-                          1) // Adiciona um divisor entre categorias
-                    const Divider(
-                      height: 24,
-                      thickness: 1,
-                      indent: 16,
-                      endIndent: 16,
-                    ),
-                ],
-              );
-            },
-          );
-        },
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'fab_expositor_list_screen',
-        onPressed: () {
-          Navigator.pushNamed(context, ExpositorFormScreen.routeNameAdd);
-        },
-        tooltip: 'Adicionar Expositor',
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_expositor_list_screen', // Mantém a heroTag única
+        onPressed: () => _navigateToForm(), // Navega para adicionar novo
+        icon: const Icon(Icons.add_circle_outline),
+        label: const Text('Feirante'), // "+ Feirante"
+        tooltip: 'Adicionar Novo Feirante',
+        // O estilo vem do tema global
       ),
     );
   }
