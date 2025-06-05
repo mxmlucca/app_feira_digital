@@ -1,26 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/expositor.dart';
+import '../models/feira_evento.dart';
 import '../services/firestore_service.dart';
-import 'expositor_form_screen.dart'; // Para navegar para a edição
+import 'expositor_form_screen.dart';
 
-// Supondo que kCoresCategorias está definido globalmente ou importado
-// Se não, defina-o aqui ou importe-o.
-// const Map<String, Color> kCoresCategorias = { /* ... seu mapa de cores ... */ };
-
-class ExpositorDetailScreen extends StatelessWidget {
+class ExpositorDetailScreen extends StatefulWidget {
   final Expositor expositor;
 
   const ExpositorDetailScreen({super.key, required this.expositor});
 
-  // Não precisamos de routeName se sempre navegamos com MaterialPageRoute e argumentos.
-  // static const String routeName = '/expositor-detail';
+  @override
+  State<ExpositorDetailScreen> createState() => _ExpositorDetailScreenState();
+}
+
+class _ExpositorDetailScreenState extends State<ExpositorDetailScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  late int _anoSelecionado;
+
+  @override
+  void initState() {
+    super.initState();
+    _anoSelecionado = DateTime.now().year;
+  }
 
   Future<void> _confirmarERemoverExpositor(
     BuildContext context,
     String id,
   ) async {
-    final firestoreService =
-        FirestoreService(); // Instancia localmente ou passe via Provider/DI
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
     bool confirmar =
         await showDialog(
           context: context,
@@ -32,14 +42,14 @@ class ExpositorDetailScreen extends StatelessWidget {
               ),
               actions: <Widget>[
                 TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
+                  onPressed: () => navigator.pop(false),
                   child: const Text('Cancelar'),
                 ),
                 TextButton(
                   style: TextButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
                   ),
-                  onPressed: () => Navigator.of(ctx).pop(true),
+                  onPressed: () => navigator.pop(true),
                   child: const Text('Remover'),
                 ),
               ],
@@ -48,15 +58,15 @@ class ExpositorDetailScreen extends StatelessWidget {
         ) ??
         false;
 
-    if (confirmar && context.mounted) {
+    if (confirmar) {
       try {
-        await firestoreService.removerExpositor(id);
-        ScaffoldMessenger.of(context).showSnackBar(
+        await _firestoreService.removerExpositor(id);
+        scaffoldMessenger.showSnackBar(
           const SnackBar(content: Text('Expositor removido com sucesso!')),
         );
-        Navigator.of(context).pop(); // Volta para a lista após remover
+        navigator.pop(); // Volta para a lista após remover
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Erro ao remover expositor: $e')),
         );
       }
@@ -73,28 +83,11 @@ class ExpositorDetailScreen extends StatelessWidget {
         builder:
             (context) => ExpositorFormScreen(expositor: expositorParaEditar),
         settings: RouteSettings(
-          name: ExpositorFormScreen.routeNameEdit, // Para consistência
+          name: ExpositorFormScreen.routeNameEdit,
           arguments: expositorParaEditar,
         ),
       ),
-    ).then((foiModificado) {
-      if (foiModificado == true && context.mounted) {
-        // Se o formulário indicar que houve modificação, podemos atualizar esta tela
-        // A forma mais simples seria recarregar os dados do expositor,
-        // mas isso exigiria que esta tela fosse StatefulWidget e buscasse os dados.
-        // Por agora, a lista anterior (ExpositorListScreen) já se atualiza com o Stream.
-        // Se quisermos que esta tela também se atualize, precisaríamos de uma
-        // gestão de estado mais avançada ou que o form retorne o objeto atualizado.
-        // (context as Element).reassemble(); // Força um rebuild, mas não é ideal
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Dados podem ter sido atualizados. Volte à lista para ver as mudanças se necessário.',
-            ),
-          ),
-        );
-      }
-    });
+    );
   }
 
   Widget _buildInfoRow(
@@ -104,14 +97,16 @@ class ExpositorDetailScreen extends StatelessWidget {
     String? value,
   ) {
     if (value == null || value.isEmpty) {
-      return const SizedBox.shrink(); // Não mostra nada se o valor for nulo ou vazio
+      return const SizedBox.shrink();
     }
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(
+        vertical: 4.0,
+      ), // Padding vertical reduzido
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20.0, color: Theme.of(context).colorScheme.primary),
+          Icon(icon, size: 18.0, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 12.0),
           Expanded(
             child: Column(
@@ -123,7 +118,6 @@ class ExpositorDetailScreen extends StatelessWidget {
                     context,
                   ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
                 ),
-                const SizedBox(height: 2.0),
                 Text(value, style: Theme.of(context).textTheme.bodyLarge),
               ],
             ),
@@ -133,147 +127,258 @@ class ExpositorDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildGridItem(FeiraEvento feira) {
+    final bool? presente = feira.presencaExpositores?[widget.expositor.id];
+    Color corIcone = Colors.grey;
+    IconData icone = Icons.schedule;
+
+    if (presente == true) {
+      corIcone = Colors.green.shade700;
+      icone = Icons.check_circle;
+    } else if (presente == false) {
+      corIcone = Colors.red.shade700;
+      icone = Icons.cancel;
+    }
+
+    return Card(
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(4.0), // Padding interno reduzido
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              DateFormat('dd/MM').format(feira.data),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ), // Fonte menor
+            const SizedBox(height: 4.0),
+            Icon(icone, color: corIcone, size: 28), // Ícone um pouco menor
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // A cor do texto pode ser definida no tema ou aqui, para contraste com o fundo amarelo
-    final Color corTextoPrincipal = Colors.black87; // Exemplo
-    final Color corFundoTela = const Color(0xFFFFEB3B); // Amarelo do seu design
+    final Color corFundoTela = theme.colorScheme.secondary;
+    final Color corTextoPrincipal = theme.colorScheme.primary;
+    final Color corBotao = theme.colorScheme.primary;
 
     return Scaffold(
-      backgroundColor: corFundoTela, // Fundo amarelo da tela
+      backgroundColor: corFundoTela,
       appBar: AppBar(
-        title: const Text('Feirante'), // Ou expositor.nome se preferir
-        // A cor e estilo da AppBar virão do ThemeData
+        title: const Text('Feirante'),
         actions: [
-          if (expositor.id !=
-              null) // Só mostra o botão de remover se o expositor já existe (tem ID)
+          if (widget.expositor.id != null)
             IconButton(
               icon: const Icon(Icons.delete_forever_outlined),
               tooltip: 'Remover Expositor',
-              onPressed: () {
-                _confirmarERemoverExpositor(context, expositor.id!);
-              },
+              onPressed:
+                  () => _confirmarERemoverExpositor(
+                    context,
+                    widget.expositor.id!,
+                  ),
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // Secção Nome e Estande
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white, // Fundo branco para esta secção
-                borderRadius: BorderRadius.circular(12.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      expositor.nome,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: theme.colorScheme.primary, // Cor do nome
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    expositor.numeroEstande != null &&
-                            expositor.numeroEstande!.isNotEmpty
-                        ? expositor.numeroEstande!
-                        : 'S/N',
-                    style: TextStyle(
-                      fontSize: 48, // Tamanho grande para o número do estande
+      // MUDANÇA: Usando ListView em vez de SingleChildScrollView + Column
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+        children: <Widget>[
+          // --- Secção Nome e Estande ---
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.expositor.nome,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: theme.colorScheme.primary,
                       fontWeight: FontWeight.bold,
-                      color:
-                          theme
-                              .colorScheme
-                              .secondary, // Cor de destaque para o número
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  widget.expositor.numeroEstande ?? 'S/N',
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.secondary.withOpacity(
+                      0.9,
+                    ), // Cor de destaque
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24.0),
+
+          // --- Secção Informações do Vendedor ---
+          Text(
+            'Informações do Vendedor',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: corTextoPrincipal,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8.0),
+          Card(
+            color: Colors.white.withOpacity(0.9),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: <Widget>[
+                  _buildInfoRow(
+                    context,
+                    Icons.category_outlined,
+                    'Categoria',
+                    widget.expositor.tipoProdutoServico,
+                  ),
+                  _buildInfoRow(
+                    context,
+                    Icons.business_center_outlined,
+                    'Situação',
+                    widget.expositor.situacao,
+                  ),
+                  _buildInfoRow(
+                    context,
+                    Icons.phone_outlined,
+                    'Contato',
+                    widget.expositor.contato,
+                  ),
+                  _buildInfoRow(
+                    context,
+                    Icons.notes_outlined,
+                    'Descrição',
+                    widget.expositor.descricao,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24.0),
+          ),
+          const SizedBox(height: 32.0),
 
-            // Secção "Informações do Vendedor"
-            Text(
-              'Informações do Vendedor',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: corTextoPrincipal, // Cor do título da secção
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8.0),
-            Card(
-              // Usar um Card para agrupar as informações, já estilizado pelo tema
-              elevation:
-                  0, // Pode remover a elevação se o fundo da tela já contrasta
-              color: corFundoTela.withAlpha(
-                200,
-              ), // Um pouco de transparência ou cor diferente
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: <Widget>[
-                    _buildInfoRow(
-                      context,
-                      Icons.category_outlined,
-                      'Categoria',
-                      expositor.tipoProdutoServico,
-                    ),
-                    _buildInfoRow(
-                      context,
-                      Icons.business_center_outlined,
-                      'Situação',
-                      expositor.situacao,
-                    ),
-                    _buildInfoRow(
-                      context,
-                      Icons.phone_outlined,
-                      'Contato',
-                      expositor.contato,
-                    ),
-                    _buildInfoRow(
-                      context,
-                      Icons.notes_outlined,
-                      'Descrição',
-                      expositor.descricao,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 32.0),
-
-            // Botão Editar
-            Center(
+          // --- Botão Editar ---
+          // MUDANÇA: Envolvido em SizedBox para garantir a largura total e padding
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 40.0,
+            ), // Adiciona margem lateral
+            child: SizedBox(
+              width: double.infinity,
               child: ElevatedButton(
-                // O estilo virá do tema global, mas pode ser personalizado aqui
-                // style: ElevatedButton.styleFrom(backgroundColor: corDoBotaoNoFigma),
-                onPressed: () {
-                  _navegarParaFormularioEdicao(context, expositor);
-                },
+                // O estilo (cores, etc) virá do tema global, mas podemos definir o tamanho
+                style: theme.elevatedButtonTheme.style,
+                onPressed:
+                    () =>
+                        _navegarParaFormularioEdicao(context, widget.expositor),
                 child: const Text('Editar Informações'),
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 32.0),
+
+          // --- Secção Histórico de Presença ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios),
+                onPressed: () => setState(() => _anoSelecionado--),
+              ),
+              Text(
+                _anoSelecionado.toString(),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: corTextoPrincipal,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_ios),
+                onPressed: () => setState(() => _anoSelecionado++),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8.0),
+
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              color: corBotao,
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: StreamBuilder<List<FeiraEvento>>(
+              stream: _firestoreService.getFeiraEventos(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  );
+                }
+                if (snapshot.hasError)
+                  return Center(
+                    child: Text(
+                      'Erro: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                if (!snapshot.hasData || snapshot.data!.isEmpty)
+                  return const Center(
+                    child: Text(
+                      'Nenhuma feira encontrada.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  );
+
+                final feirasDoAno =
+                    snapshot.data!
+                        .where((feira) => feira.data.year == _anoSelecionado)
+                        .toList();
+
+                if (feirasDoAno.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Nenhuma feira encontrada para $_anoSelecionado.',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  );
+                }
+
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    crossAxisSpacing: 8.0,
+                    mainAxisSpacing: 8.0,
+                  ),
+                  itemCount: feirasDoAno.length,
+                  itemBuilder: (context, index) {
+                    return _buildGridItem(feirasDoAno[index]);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

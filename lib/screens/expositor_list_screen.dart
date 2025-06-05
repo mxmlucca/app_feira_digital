@@ -189,47 +189,6 @@ class _ExpositorListScreenState extends State<ExpositorListScreen>
     });
   }
 
-  Future<void> _removerExpositor(String id) async {
-    /* ... (código existente, sem alterações) ... */
-    bool confirmar =
-        await showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Confirmar Remoção'),
-              content: const Text(
-                'Tem a certeza de que deseja remover este expositor?',
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Remover'),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-    if (confirmar) {
-      try {
-        await _firestoreService.removerExpositor(id);
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Expositor removido com sucesso!')),
-          );
-      } catch (e) {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao remover expositor: $e')),
-          );
-      }
-    }
-  }
-
   void _navigateToDetail(Expositor expositor) {
     print('Navegando para detalhes do expositor: ${expositor.nome}');
     Navigator.push(
