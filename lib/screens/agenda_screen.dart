@@ -71,13 +71,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
       // Removi o FAB daqui porque adicionei o botão de adicionar na AppBar
       // para um design mais limpo e consistente com a ExpositorListScreen.
       // Se preferir o FAB, pode descomentar aqui e remover o IconButton da AppBar.
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_agenda_screen', // Lembre-se da heroTag única
         onPressed: () {
           Navigator.pushNamed(context, FeiraFormScreen.routeNameAdd);
         },
         tooltip: 'Adicionar Nova Feira',
-        child: const Icon(Icons.add),
+        label: const Text('Feira'),
+        icon: const Icon(Icons.add),
       ),
     );
   }

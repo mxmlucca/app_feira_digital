@@ -47,14 +47,37 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
   }
 
   Future<void> _selecionarData(BuildContext context) async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final DateTime? dataEscolhida = await showDatePicker(
       context: context,
       initialDate: _dataSelecionada ?? DateTime.now(),
-      firstDate: DateTime(2000),
+      firstDate: DateTime(2020),
       lastDate: DateTime(2101),
-      helpText: 'Selecione a data da feira',
-      cancelText: 'Cancelar',
-      confirmText: 'Confirmar',
+      helpText: 'SELECIONE A DATA DA FEIRA',
+      cancelText: 'CANCELAR',
+      confirmText: 'CONFIRMAR',
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: theme.copyWith(
+            colorScheme: colorScheme.copyWith(
+              primary: colorScheme.primary,
+              onPrimary: colorScheme.onPrimary,
+              onSurface: colorScheme.onSurface,
+              surface: colorScheme.secondary,
+              background: colorScheme.secondary,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: colorScheme.primary),
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: theme.colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (dataEscolhida != null && dataEscolhida != _dataSelecionada) {
       setState(() {
@@ -73,11 +96,9 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
         );
         return;
       }
-
       setState(() {
         _isSaving = true;
       });
-
       try {
         final feiraParaSalvar = FeiraEvento(
           id: widget.feiraEvento?.id,
@@ -90,44 +111,51 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
 
         if (widget.feiraEvento == null) {
           await _firestoreService.adicionarFeiraEvento(feiraParaSalvar);
-          if (mounted) {
+          if (mounted)
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Feira adicionada com sucesso!')),
             );
-          }
         } else {
           await _firestoreService.atualizarFeiraEvento(feiraParaSalvar);
-          if (mounted) {
+          if (mounted)
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Feira atualizada com sucesso!')),
             );
-          }
         }
-        if (mounted) Navigator.of(context).pop();
+        if (mounted)
+          Navigator.of(
+            context,
+          ).pop(true); // Retorna true para indicar que algo foi salvo
       } catch (e) {
-        if (mounted) {
+        if (mounted)
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Erro ao salvar feira: $e')));
-        }
       } finally {
-        if (mounted) {
+        if (mounted)
           setState(() {
             _isSaving = false;
           });
-        }
       }
     }
   }
 
+  // Helper para converter o enum para uma string legível
+  String _statusParaStringLegivel(StatusFeira status) {
+    return status.toString().split('.').last[0].toUpperCase() +
+        status.toString().split('.').last.substring(1);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // O tema é herdado automaticamente, não precisamos de 'final theme = Theme.of(context);'
+    // a menos que queiramos sobrescrever algo muito específico.
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           widget.feiraEvento == null ? 'Adicionar Nova Feira' : 'Editar Feira',
         ),
-        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -136,10 +164,17 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              // Título da Feira
               TextFormField(
                 controller: _tituloController,
                 decoration: const InputDecoration(
-                  labelText: 'Título da Feira (Ex: Feira de Maio)',
+                  hintText:
+                      'Título da Feira (Ex: Feira de Maio)', // Usando hintText
+                  prefixIcon: Icon(Icons.festival_outlined),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -149,48 +184,63 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _dataSelecionada == null
-                          ? 'Nenhuma data selecionada'
-                          : 'Data da Feira: ${DateFormat('dd/MM/yyyy').format(_dataSelecionada!)}',
-                      style: const TextStyle(fontSize: 16),
+
+              // Seletor de Data Estilizado
+              InkWell(
+                onTap: () => _selecionarData(context),
+                borderRadius: BorderRadius.circular(
+                  8.0,
+                ), // Para o efeito de clique
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    hintText: 'Data da Feira',
+                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                  ),
+                  child: Text(
+                    _dataSelecionada == null
+                        ? 'Toque para selecionar a data'
+                        : DateFormat(
+                          'EEEE, dd \'de\' MMMM \'de\' yyyy',
+                          'pt_BR',
+                        ).format(_dataSelecionada!),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () => _selecionarData(context),
-                    child: const Text('Selecionar Data'),
-                  ),
-                ],
+                ),
               ),
               const SizedBox(height: 20),
+
+              // Anotações
               TextFormField(
                 controller: _anotacoesController,
                 decoration: const InputDecoration(
-                  labelText: 'Anotações sobre a Feira (Opcional)',
-                  border: OutlineInputBorder(),
+                  hintText: 'Anotações sobre a Feira (Opcional)',
+                  prefixIcon: Icon(Icons.notes_outlined),
                   alignLabelWithHint: true,
                 ),
                 maxLines: 4,
                 keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 20),
+
+              // Seletor de Status
               DropdownButtonFormField<StatusFeira>(
                 decoration: const InputDecoration(
-                  labelText: 'Status da Feira',
-                  border: OutlineInputBorder(),
+                  hintText: 'Status da Feira',
+                  prefixIcon: Icon(Icons.flag_outlined),
                 ),
                 value: _statusSelecionado,
                 items:
                     StatusFeira.values.map((StatusFeira status) {
                       return DropdownMenuItem<StatusFeira>(
                         value: status,
-                        child: Text(
-                          status.toString().split('.').last[0].toUpperCase() +
-                              status.toString().split('.').last.substring(1),
-                        ),
+                        child: Text(_statusParaStringLegivel(status)),
                       );
                     }).toList(),
                 onChanged: (StatusFeira? novoValor) {
@@ -200,10 +250,15 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
                     });
                   }
                 },
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 validator:
                     (value) => value == null ? 'Selecione um status' : null,
               ),
               const SizedBox(height: 32),
+
+              // Botão Salvar
               ElevatedButton(
                 onPressed: _isSaving ? null : _salvarFeira,
                 child:

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart'; // Flutter framework
 import 'package:firebase_core/firebase_core.dart'; // Firebase core para inicialização
 import 'firebase_options.dart'; // Configurações do Firebase geradas pelo FlutterFire CLI
 import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth para autenticação
+import 'package:intl/date_symbol_data_local.dart';
 
 /// Importação de telas e widgets
 import 'screens/login_screen.dart'; // Tela de login
@@ -23,6 +24,7 @@ import 'widgets/main_scaffold.dart'; // Scaffold principal com BottomNavigationB
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('pt_BR', null);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }

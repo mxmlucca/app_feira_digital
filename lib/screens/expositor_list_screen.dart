@@ -304,7 +304,7 @@ class _ExpositorListScreenState extends State<ExpositorListScreen>
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_expositor_list_screen', // Mantém a heroTag única
         onPressed: () => _navigateToForm(), // Navega para adicionar novo
-        icon: const Icon(Icons.add_circle_outline),
+        icon: const Icon(Icons.add),
         label: const Text('Feirante'), // "+ Feirante"
         tooltip: 'Adicionar Novo Feirante',
         // O estilo vem do tema global
