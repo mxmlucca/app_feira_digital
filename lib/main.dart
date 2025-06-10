@@ -6,6 +6,8 @@ import 'package:firebase_core/firebase_core.dart'; // Firebase core para inicial
 import 'firebase_options.dart'; // Configurações do Firebase geradas pelo FlutterFire CLI
 import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth para autenticação
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart'; // Provider para gerenciamento de estado
+import 'services/user_provider.dart'; // Provider para gerenciar o estado do usuário
 
 /// Importação de telas e widgets
 import 'screens/login_screen.dart'; // Tela de login
@@ -14,6 +16,9 @@ import 'screens/expositor_form_screen.dart'; // Tela de formulário de expositor
 import 'screens/mapa_screen.dart'; // Tela de mapa
 import 'screens/agenda_screen.dart'; // Tela de agenda
 import 'screens/feira_form_screen.dart'; // Tela de formulário de feira
+import 'screens/cadastro_expositor_screen.dart';
+import 'screens/aguardando_aprovacao_screen.dart';
+import 'screens/admin/admin_aprovacao_screen.dart'; // Tela de aprovação de expositores para administradores
 import 'widgets/main_scaffold.dart'; // Scaffold principal com BottomNavigationBar
 
 /// Função principal que inicia o aplicativo Flutter.
@@ -26,7 +31,13 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR', null);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  runApp(
+    // Envolve a aplicação com o provider
+    ChangeNotifierProvider(
+      create: (context) => UserProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 /// Definição de cores personalizadas para o tema do aplicativo
@@ -253,6 +264,10 @@ class MyApp extends StatelessWidget {
         ExpositorListScreen.routeName: (context) => const ExpositorListScreen(),
         AgendaScreen.routeName: (context) => const AgendaScreen(),
         MapaScreen.routeName: (context) => const MapaScreen(),
+        CadastroExpositorScreen.routeName:
+            (context) => const CadastroExpositorScreen(),
+        AdminAprovacaoScreen.routeName:
+            (context) => const AdminAprovacaoScreen(),
       },
     );
   }
@@ -264,33 +279,50 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream:
-          FirebaseAuth.instance
-              .authStateChanges(), // Escuta as mudanças no estado de autenticação do Firebase
-      builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
-        // Mostra um spinner enquanto verifica o estado de autenticação
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          print("AuthWrapper: Verificando estado de autenticação...");
+    // Usa um Consumer para ouvir o UserProvider
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        // Enquanto o UserProvider está a buscar os dados iniciais
+        if (userProvider.isLoading) {
+          print(
+            "AuthWrapper: UserProvider está a carregar... Mostrando spinner.",
+          );
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // Se o snapshot tem um utilizador (não nulo), o utilizador está logado
-        if (snapshot.hasData && snapshot.data != null) {
-          // snapshot.data pode ser User ou null
-          print(
-            "AuthWrapper: Utilizador ${snapshot.data!.uid} logado. Mostrando MainScaffold.",
-          );
-          return const MainScaffold(); // Mostra a tela principal com BottomNavBar
-        } else {
-          // Se não há utilizador (snapshot.data é null), mostra a tela de login
-          print(
-            "AuthWrapper: Nenhum utilizador logado. Mostrando LoginScreen.",
-          );
-          return const LoginScreen(); // Mostra a tela de login
+        // Se, após carregar, não houver utilizador, mostra a LoginScreen
+        if (userProvider.usuario == null) {
+          print("AuthWrapper: Nenhum utilizador. Mostrando LoginScreen.");
+          return const LoginScreen();
         }
+
+        // Se o utilizador é um admin, mostra a tela principal
+        if (userProvider.usuario!.papel == 'admin') {
+          print("AuthWrapper: Utilizador é admin. Mostrando MainScaffold.");
+          return const MainScaffold();
+        }
+
+        // Se o utilizador é um expositor
+        if (userProvider.usuario!.papel == 'expositor') {
+          // Verifica o status do perfil do expositor
+          final statusExpositor = userProvider.expositorProfile?.status;
+          print(
+            "AuthWrapper: Utilizador é expositor com status: $statusExpositor",
+          );
+
+          if (statusExpositor == 'ativo') {
+            return const MainScaffold(); // Se ativo, entra na app
+          } else {
+            // Se o status for 'aguardando_aprovacao', 'reprovado',
+            // ou se o perfil ainda não foi encontrado, mostra a tela de espera.
+            return const AguardandoAprovacaoScreen();
+          }
+        }
+
+        // Caso de fallback (não deve acontecer)
+        return const LoginScreen();
       },
     );
   }

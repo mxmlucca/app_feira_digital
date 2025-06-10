@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart'; // Importar o Provider
+import '../services/user_provider.dart'; // Importar o UserProvider
+import 'admin/admin_aprovacao_screen.dart'; // Importar a nova tela
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -28,6 +31,9 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final User? currentUser = FirebaseAuth.instance.currentUser;
+
+    final userProvider = Provider.of<UserProvider>(context);
+    final bool isAdmin = userProvider.usuario?.papel == 'admin';
 
     return Scaffold(
       appBar: AppBar(
@@ -65,6 +71,22 @@ class HomeScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 18),
                 textAlign: TextAlign.center,
               ),
+              // --- BOTÃO CONDICIONAL PARA ADMIN ---
+              if (isAdmin)
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.playlist_add_check_circle_outlined),
+                  label: const Text('Aprovar Novos Feirantes'),
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      AdminAprovacaoScreen.routeName,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                  ),
+                ),
             ],
           ),
         ),

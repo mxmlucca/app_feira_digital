@@ -236,13 +236,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: corTextoLink),
                     ),
                   ),
+
+                  // 6. Link para cadastro
                   TextButton(
                     onPressed: () {
-                      // TODO: Implementar lógica de cadastrar com vendedor
                       print('Botão Cadastrar com Vendedor pressionado');
+                      Navigator.pushNamed(
+                        context,
+                        '/cadastro-expositor', // Certifique-se de que esta rota está definida no seu MaterialApp
+                      );
                     },
                     child: Text(
-                      'Cadastrar como Vendedor',
+                      'Cadastrar como Expositor',
                       style: TextStyle(color: corTextoLink),
                     ),
                   ),

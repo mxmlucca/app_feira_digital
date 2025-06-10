@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/expositor.dart';
 import '../models/feira_evento.dart';
+import '../models/usuario.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -29,6 +30,29 @@ class FirestoreService {
   }
 
   // Expositor
+
+  /// Cria ou atualiza os dados de um Expositor com um ID específico.
+  Future<void> setExpositor(Expositor expositor) async {
+    // O ID do expositor DEVE ser o UID do Firebase Auth.
+    if (expositor.id == null) {
+      throw Exception(
+        'ID do expositor (UID) não pode ser nulo ao usar setExpositor.',
+      );
+    }
+    try {
+      await _db
+          .collection('expositores')
+          .doc(expositor.id)
+          .set(expositor.toMap());
+      print(
+        'Dados do expositor salvos com sucesso para o UID: ${expositor.id}',
+      );
+    } catch (e) {
+      print("Erro ao definir dados do expositor: $e");
+      rethrow;
+    }
+  }
+
   Future<void> adicionarExpositor(Expositor expositor) async {
     try {
       await _expositoresRef.add(expositor);
@@ -133,6 +157,52 @@ class FirestoreService {
       print('Evento da feira removido com sucesso!');
     } catch (e) {
       print('Erro ao remover evento da feira: $e');
+      rethrow;
+    }
+  }
+
+  // --- Operações para Usuários ---
+
+  /// Busca os dados de um utilizador no Firestore a partir do seu UID.
+  /// Retorna um objeto [Usuario] se encontrado, senão retorna null.
+  Future<Usuario?> getUsuario(String uid) async {
+    try {
+      final docSnapshot = await _db.collection('usuario').doc(uid).get();
+      if (docSnapshot.exists) {
+        return Usuario.fromMap(docSnapshot.data()!, docSnapshot.id);
+      }
+    } catch (e) {
+      print("Erro ao buscar dados do utilizador: $e");
+    }
+    return null;
+  }
+
+  /// Cria ou atualiza os dados de um utilizador no Firestore.
+  Future<void> setUsuario(Usuario usuario) async {
+    try {
+      await _db.collection('usuario').doc(usuario.uid).set(usuario.toMap());
+    } catch (e) {
+      print("Erro ao definir dados do utilizador: $e");
+      rethrow;
+    }
+  }
+
+  /// Aprovação de novos expositores.
+  /// Busca todos os expositores com um status específico (ex: 'aguardando_aprovacao').
+  Stream<List<Expositor>> getExpositoresPorStatus(String status) {
+    return _expositoresRef.where('status', isEqualTo: status).snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    });
+  }
+
+  /// Atualiza apenas o status de um expositor específico.
+  Future<void> atualizarStatusExpositor(String id, String novoStatus) {
+    try {
+      return _expositoresRef.doc(id).update({'status': novoStatus});
+    } catch (e) {
+      print("Erro ao atualizar status do expositor: $e");
       rethrow;
     }
   }

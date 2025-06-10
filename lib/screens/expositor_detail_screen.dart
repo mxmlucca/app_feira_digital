@@ -4,6 +4,8 @@ import '../models/expositor.dart';
 import '../models/feira_evento.dart';
 import '../services/firestore_service.dart';
 import 'expositor_form_screen.dart';
+import 'package:provider/provider.dart';
+import '../services/user_provider.dart';
 
 class ExpositorDetailScreen extends StatefulWidget {
   final Expositor expositor;
@@ -166,12 +168,16 @@ class _ExpositorDetailScreenState extends State<ExpositorDetailScreen> {
     final Color corTextoPrincipal = theme.colorScheme.primary;
     final Color corBotao = theme.colorScheme.primary;
 
+    // Verifica se o usuário é um administrador
+    final userProvider = Provider.of<UserProvider>(context);
+    final bool isAdmin = userProvider.usuario?.papel == 'admin';
+
     return Scaffold(
       backgroundColor: corFundoTela,
       appBar: AppBar(
         title: const Text('Feirante'),
         actions: [
-          if (widget.expositor.id != null)
+          if (widget.expositor.id != null && isAdmin)
             IconButton(
               icon: const Icon(Icons.delete_forever_outlined),
               tooltip: 'Remover Expositor',
@@ -270,24 +276,28 @@ class _ExpositorDetailScreenState extends State<ExpositorDetailScreen> {
           ),
           const SizedBox(height: 32.0),
 
-          // --- Botão Editar ---
-          // MUDANÇA: Envolvido em SizedBox para garantir a largura total e padding
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 40.0,
-            ), // Adiciona margem lateral
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                // O estilo (cores, etc) virá do tema global, mas podemos definir o tamanho
-                style: theme.elevatedButtonTheme.style,
-                onPressed:
-                    () =>
-                        _navegarParaFormularioEdicao(context, widget.expositor),
-                child: const Text('Editar Informações'),
+          if (isAdmin) ...[
+            // --- Botão Editar ---
+            // MUDANÇA: Envolvido em SizedBox para garantir a largura total e padding
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 40.0,
+              ), // Adiciona margem lateral
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  // O estilo (cores, etc) virá do tema global, mas podemos definir o tamanho
+                  style: theme.elevatedButtonTheme.style,
+                  onPressed:
+                      () => _navegarParaFormularioEdicao(
+                        context,
+                        widget.expositor,
+                      ),
+                  child: const Text('Editar Informações'),
+                ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: 32.0),
 
           // --- Secção Histórico de Presença ---
