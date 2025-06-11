@@ -198,9 +198,17 @@ class FirestoreService {
   }
 
   /// Atualiza apenas o status de um expositor específico.
-  Future<void> atualizarStatusExpositor(String id, String novoStatus) {
+  Future<void> atualizarStatusExpositor(
+    String id,
+    String novoStatus, {
+    String? motivo,
+  }) {
     try {
-      return _expositoresRef.doc(id).update({'status': novoStatus});
+      final dadosParaAtualizar = {'status': novoStatus};
+      if (motivo != null) {
+        dadosParaAtualizar['motivoReprovacao'] = motivo;
+      }
+      return _expositoresRef.doc(id).update(dadosParaAtualizar);
     } catch (e) {
       print("Erro ao atualizar status do expositor: $e");
       rethrow;

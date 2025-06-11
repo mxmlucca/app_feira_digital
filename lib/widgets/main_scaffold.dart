@@ -8,13 +8,10 @@ import '../screens/expositor_list_screen.dart';
 import '../screens/mapa_screen.dart';
 import '../screens/agenda_screen.dart';
 import '../screens/profile/profile_loader_screen.dart';
-// Podemos criar uma tela "em breve" para funcionalidades futuras
-// import '../screens/em_breve_screen.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
-  static const String routeName =
-      '/main-scaffold'; // Mantive o seu nome de rota
+  static const String routeName = '/main-scaffold';
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();

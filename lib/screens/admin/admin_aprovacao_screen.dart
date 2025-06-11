@@ -15,21 +15,80 @@ class _AdminAprovacaoScreenState extends State<AdminAprovacaoScreen> {
   final FirestoreService _firestoreService = FirestoreService();
 
   Future<void> _processarAprovacao(String id, bool aprovar) async {
-    final novoStatus = aprovar ? 'ativo' : 'reprovado';
-    final acao = aprovar ? 'aprovado' : 'reprovado';
-    try {
-      await _firestoreService.atualizarStatusExpositor(id, novoStatus);
-      if (mounted) {
+    String novoStatus;
+    String acao;
+
+    if (aprovar) {
+      novoStatus = 'ativo';
+      acao = 'aprovado';
+      try {
+        await _firestoreService.atualizarStatusExpositor(id, novoStatus);
+      } catch (e) {
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Erro ao aprovar: $e')));
+        return;
+      }
+    } else {
+      // SE FOR REPROVAR, ABRE UMA CAIXA DE DIÁLOGO
+      final motivoController = TextEditingController();
+      final motivo = await showDialog<String>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Reprovar Cadastro'),
+              content: TextField(
+                controller: motivoController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Digite o motivo da reprovação',
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed:
+                      () => Navigator.of(context).pop(motivoController.text),
+                  child: const Text('Confirmar Reprovação'),
+                ),
+              ],
+            ),
+      );
+
+      if (motivo == null || motivo.trim().isEmpty) {
+        // Admin cancelou ou não escreveu um motivo
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Expositor $acao com sucesso!')));
+        ).showSnackBar(const SnackBar(content: Text('Reprovação cancelada.')));
+        return;
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao processar aprovação: $e')),
+
+      novoStatus = 'reprovado';
+      acao = 'reprovado';
+      try {
+        // Precisamos de um método no serviço que salve também o motivo
+        await _firestoreService.atualizarStatusExpositor(
+          id,
+          novoStatus,
+          motivo: motivo,
         );
+      } catch (e) {
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Erro ao reprovar: $e')));
+        return;
       }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Expositor $acao com sucesso!')));
     }
   }
 

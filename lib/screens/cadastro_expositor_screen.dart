@@ -5,7 +5,10 @@ import '../models/usuario.dart';
 import '../services/firestore_service.dart';
 
 class CadastroExpositorScreen extends StatefulWidget {
-  const CadastroExpositorScreen({super.key});
+  final Expositor? expositorParaCorrecao;
+
+  const CadastroExpositorScreen({super.key, this.expositorParaCorrecao});
+
   static const String routeName = '/cadastro-expositor';
 
   @override
@@ -17,7 +20,6 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
   final _formKey = GlobalKey<FormState>();
   final FirestoreService _firestoreService = FirestoreService();
 
-  // Controladores para todos os campos
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nomeController = TextEditingController();
@@ -26,11 +28,11 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
   final _numeroEstandeController = TextEditingController();
   String? _categoriaSelecionada;
   String? _situacaoSelecionada;
-
   bool _isSaving = false;
   bool _obscurePassword = true;
 
-  // Listas de opções para os dropdowns
+  late bool _isModoCorrecao;
+
   final List<String> kCategoriasExpositor = [
     'Artesanato',
     'Alimentação',
@@ -48,6 +50,27 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _isModoCorrecao = widget.expositorParaCorrecao != null;
+
+    if (_isModoCorrecao) {
+      final e = widget.expositorParaCorrecao!;
+      _emailController.text = e.email ?? '';
+      _nomeController.text = e.nome;
+      _contatoController.text = e.contato;
+      _descricaoController.text = e.descricao;
+      _numeroEstandeController.text = e.numeroEstande ?? '';
+      _categoriaSelecionada =
+          kCategoriasExpositor.contains(e.tipoProdutoServico)
+              ? e.tipoProdutoServico
+              : null;
+      _situacaoSelecionada =
+          kSituacoesExpositor.contains(e.situacao) ? e.situacao : null;
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -59,7 +82,6 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
   }
 
   Future<void> _handleCadastro() async {
-    // Primeiro, valida o formulário. Se não for válido, retorna.
     if (!(_formKey.currentState?.validate() ?? false)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -68,51 +90,48 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
       );
       return;
     }
-
     setState(() {
       _isSaving = true;
     });
 
     try {
-      // 1. Criar o utilizador no Firebase Authentication
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
+      User? user;
 
-      final user = userCredential.user;
-      if (user == null) {
-        throw Exception(
-          'Não foi possível criar o utilizador no Firebase Auth.',
-        );
+      if (!_isModoCorrecao) {
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: _emailController.text.trim(),
+              password: _passwordController.text.trim(),
+            );
+        user = userCredential.user;
+      } else {
+        user = FirebaseAuth.instance.currentUser;
       }
 
-      // 2. Preparar os objetos com todos os dados validados
-      final novoUsuario = Usuario(
+      if (user == null) throw Exception('Erro de autenticação.');
+
+      final usuarioParaSalvar = Usuario(
         uid: user.uid,
         email: user.email!,
         nome: _nomeController.text.trim(),
         papel: 'expositor',
       );
 
-      final novoExpositor = Expositor(
+      final expositorParaSalvar = Expositor(
         id: user.uid,
         email: user.email!,
         nome: _nomeController.text.trim(),
         contato: _contatoController.text.trim(),
         descricao: _descricaoController.text.trim(),
-        tipoProdutoServico:
-            _categoriaSelecionada!, // '!' é seguro aqui por causa do validator
-        situacao:
-            _situacaoSelecionada, // 'situacao' é opcional no model, pode ser nulo
+        tipoProdutoServico: _categoriaSelecionada!,
+        situacao: _situacaoSelecionada,
         numeroEstande: _numeroEstandeController.text.trim(),
-        status: 'aguardando_aprovacao', // Status inicial
+        status: 'aguardando_aprovacao',
+        motivoReprovacao: null,
       );
 
-      // 3. Salvar os dados no Firestore
-      await _firestoreService.setUsuario(novoUsuario);
-      await _firestoreService.setExpositor(novoExpositor);
+      await _firestoreService.setUsuario(usuarioParaSalvar);
+      await _firestoreService.setExpositor(expositorParaSalvar);
 
       if (mounted) {
         await showDialog(
@@ -121,7 +140,7 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
               (ctx) => AlertDialog(
                 title: const Text('Cadastro Enviado!'),
                 content: const Text(
-                  'O seu cadastro foi enviado com sucesso e está a aguardar a aprovação de um administrador.',
+                  'O seu cadastro foi enviado com sucesso e será analisado por um administrador.',
                 ),
                 actions: [
                   TextButton(
@@ -131,36 +150,52 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
                 ],
               ),
         );
-        if (mounted) Navigator.of(context).pop(); // Volta para a tela de login
+        if (mounted) {
+          if (_isModoCorrecao) {
+            await FirebaseAuth.instance.signOut();
+          }
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/login', (route) => false);
+        }
       }
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Ocorreu um erro no cadastro.';
       if (e.code == 'weak-password') {
-        errorMessage = 'A senha fornecida é muito fraca (mínimo 6 caracteres).';
-      } else if (e.code == 'email-already-in-use') {
-        errorMessage = 'Este email já está a ser utilizado por outra conta.';
+        errorMessage = 'A senha fornecida é muito fraca.';
       }
-      if (mounted)
+      if (e.code == 'email-already-in-use') {
+        errorMessage = 'Este email já está a ser utilizado.';
+      }
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Erro inesperado: $e')));
+      }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isSaving = false;
         });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Cadastro de Feirante')),
+      appBar: AppBar(
+        title: Text(
+          _isModoCorrecao ? 'Corrigir Cadastro' : 'Cadastro de Feirante',
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -168,17 +203,22 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                '1. Crie o seu Acesso',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              Text('1. Crie o seu Acesso', style: theme.textTheme.titleLarge),
+
               const SizedBox(height: 12),
+
+              // EMAIL
               TextFormField(
                 controller: _emailController,
-                style: TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Seu melhor email',
-                  prefixIcon: Icon(Icons.email_outlined),
+                style: const TextStyle(color: Colors.white),
+                enabled: !_isModoCorrecao,
+                decoration: InputDecoration(
+                  hintText: 'Email',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  fillColor:
+                      !_isModoCorrecao
+                          ? Color.fromARGB(255, 31, 37, 47)
+                          : Colors.grey.shade300,
                 ),
                 keyboardType: TextInputType.emailAddress,
                 validator:
@@ -187,112 +227,151 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
                             ? 'Email inválido'
                             : null,
               ),
+
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Crie uma senha forte',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+
+              // SENHA
+              if (!_isModoCorrecao)
+                TextFormField(
+                  controller: _passwordController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Senha',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed:
+                          () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                     ),
-                    onPressed:
-                        () => setState(
-                          () => _obscurePassword = !_obscurePassword,
-                        ),
                   ),
+                  obscureText: _obscurePassword,
+                  validator:
+                      (v) =>
+                          (v == null || v.length < 6)
+                              ? 'Senha precisa de no mínimo 6 caracteres'
+                              : null,
                 ),
-                obscureText: _obscurePassword,
-                validator:
-                    (v) =>
-                        (v == null || v.length < 6)
-                            ? 'Senha precisa de no mínimo 6 caracteres'
-                            : null,
-              ),
+
               const Divider(height: 40, thickness: 1),
+
               Text(
                 '2. Suas Informações de Expositor',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+
               const SizedBox(height: 16),
+
+              // NOME
               TextFormField(
                 controller: _nomeController,
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  hintText: 'Seu nome ou nome da marca',
+                  hintText: 'Nome',
+                  prefixIcon: Icon(Icons.person_outline),
                 ),
                 validator:
                     (v) =>
                         (v == null || v.isEmpty) ? 'Campo obrigatório' : null,
               ),
+
               const SizedBox(height: 16),
+
+              // CONTATO
               TextFormField(
                 controller: _contatoController,
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   hintText: 'Seu contato (telefone/WhatsApp)',
+                  prefixIcon: Icon(Icons.phone_outlined),
                 ),
                 validator:
                     (v) =>
                         (v == null || v.isEmpty) ? 'Campo obrigatório' : null,
               ),
+
               const SizedBox(height: 16),
+
+              // DESCRIÇÃO
               TextFormField(
                 controller: _descricaoController,
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   hintText: 'Descreva seus produtos/serviços',
+                  prefixIcon: Icon(Icons.description_outlined),
                 ),
                 validator:
                     (v) =>
                         (v == null || v.isEmpty) ? 'Campo obrigatório' : null,
               ),
+
               const SizedBox(height: 16),
+
+              // CATEGORIA
               DropdownButtonFormField<String>(
                 value: _categoriaSelecionada,
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  hintText: 'Sua categoria principal',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                hint: const Text(
+                  'Sua categoria principal',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 items:
                     kCategoriasExpositor
                         .map(
-                          (cat) =>
-                              DropdownMenuItem(value: cat, child: Text(cat)),
+                          (categoria) => DropdownMenuItem(
+                            value: categoria,
+                            child: Text(categoria),
+                          ),
                         )
                         .toList(),
                 onChanged: (val) => setState(() => _categoriaSelecionada = val),
                 validator:
                     (val) => val == null ? 'Selecione uma categoria' : null,
               ),
+
               const SizedBox(height: 16),
+
+              // SITUAÇÃO
               DropdownButtonFormField<String>(
                 value: _situacaoSelecionada,
-                decoration: const InputDecoration(
-                  hintText: 'Sua situação como empreendedor',
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.info)),
+                hint: const Text(
+                  'Sua situação como empreendedor',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 items:
                     kSituacoesExpositor
                         .map(
-                          (sit) =>
-                              DropdownMenuItem(value: sit, child: Text(sit)),
+                          (situacao) => DropdownMenuItem(
+                            value: situacao,
+                            child: Text(situacao),
+                          ),
                         )
                         .toList(),
                 onChanged: (val) => setState(() => _situacaoSelecionada = val),
-                // Este campo é opcional, então não tem validator
               ),
+
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _numeroEstandeController,
-                style: TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Nº do Estande (se já souber)',
-                ),
-              ),
+
+              // NÚMERO DO ESTANDE
+              // TextFormField(
+              //   controller: _numeroEstandeController,
+              //   decoration: const InputDecoration(
+              //     hintText: 'Nº do Estande (se já souber)',
+              //   ),
+              // ),
               const SizedBox(height: 32),
+
+              // BOTÃO DE ENVIO
               ElevatedButton(
                 onPressed: _isSaving ? null : _handleCadastro,
                 child:
@@ -305,7 +384,11 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                        : const Text('Enviar Cadastro para Aprovação'),
+                        : Text(
+                          _isModoCorrecao
+                              ? 'Reenviar Cadastro'
+                              : 'Enviar para Aprovação',
+                        ),
               ),
             ],
           ),

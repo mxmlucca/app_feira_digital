@@ -1,6 +1,7 @@
 /// main.dart
 
 /// Importação de pacotes necessários
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart'; // Flutter framework
 import 'package:firebase_core/firebase_core.dart'; // Firebase core para inicialização
 import 'firebase_options.dart'; // Configurações do Firebase geradas pelo FlutterFire CLI
@@ -18,6 +19,7 @@ import 'screens/agenda_screen.dart'; // Tela de agenda
 import 'screens/feira_form_screen.dart'; // Tela de formulário de feira
 import 'screens/cadastro_expositor_screen.dart';
 import 'screens/aguardando_aprovacao_screen.dart';
+import 'screens/cadastro_reprovado_screen.dart';
 import 'screens/admin/admin_aprovacao_screen.dart'; // Tela de aprovação de expositores para administradores
 import 'widgets/main_scaffold.dart'; // Scaffold principal com BottomNavigationBar
 
@@ -130,7 +132,7 @@ class MyApp extends StatelessWidget {
           /// Estilo do campo de entrada de texto quando está focado
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8.0),
-            borderSide: const BorderSide(color: kCorSecundaria, width: 2.0),
+            borderSide: const BorderSide(color: kCorPrimaria, width: 2.0),
           ),
 
           /// Estilo do campo de entrada de texto quando há erro
@@ -230,7 +232,7 @@ class MyApp extends StatelessWidget {
           titleLarge: TextStyle(
             fontSize: 20.0,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+            color: kCorPrimaria,
           ),
           titleMedium: TextStyle(
             fontSize: 16.0,
@@ -245,29 +247,66 @@ class MyApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: kCorTextoPrimaria,
           ),
+          // Adiciona um estilo para mensagens de erro
+          // Use este estilo em widgets de texto de erro personalizados
+          // Exemplo: Text('Erro', style: Theme.of(context).textTheme.labelMedium)
+          labelMedium: const TextStyle(
+            fontSize: 14.0,
+            fontWeight: FontWeight.w600,
+            color: kCorErro,
+          ),
         ),
       ),
 
       /// Definição das rotas do aplicativo
       home:
           const AuthWrapper(), // Tela inicial que verifica o estado de autenticação do utilizador
-      routes: {
-        '/login':
-            (context) =>
-                const LoginScreen(), // Rota de fallback ou para navegação explícita
-        MainScaffold.routeName:
-            (context) =>
-                const MainScaffold(), // Rota de fallback ou para navegação explícita
-        ExpositorFormScreen.routeNameAdd:
-            (context) => const ExpositorFormScreen(),
-        FeiraFormScreen.routeNameAdd: (context) => const FeiraFormScreen(),
-        ExpositorListScreen.routeName: (context) => const ExpositorListScreen(),
-        AgendaScreen.routeName: (context) => const AgendaScreen(),
-        MapaScreen.routeName: (context) => const MapaScreen(),
-        CadastroExpositorScreen.routeName:
-            (context) => const CadastroExpositorScreen(),
-        AdminAprovacaoScreen.routeName:
-            (context) => const AdminAprovacaoScreen(),
+      onGenerateRoute: (settings) {
+        print('Rota solicitada: ${settings.name}');
+
+        // Rotas Publicas
+        if (settings.name == LoginScreen.routeName) {
+          return MaterialPageRoute(builder: (context) => const LoginScreen());
+        }
+        if (settings.name == CadastroExpositorScreen.routeName) {
+          return MaterialPageRoute(
+            builder: (context) => const CadastroExpositorScreen(),
+          );
+        }
+
+        // --- VERIFICAÇÃO DE AUTENTICAÇÃO ---
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          return MaterialPageRoute(builder: (context) => const LoginScreen());
+        }
+
+        // Rotas Protegidas (acessíveis apenas com login)
+        switch (settings.name) {
+          // Rotas de Cadastro
+          case CadastroReprovadoScreen.routeName:
+            return MaterialPageRoute(
+              builder: (context) => CadastroReprovadoScreen(),
+            );
+
+          // Main
+          case MainScaffold.routeName:
+            return MaterialPageRoute(
+              builder: (context) => const MainScaffold(),
+            );
+
+          // LoginScreen.routeName: (context) => const LoginScreen(),
+          // MainScaffold.routeName: (context) => const MainScaffold(),
+          // ExpositorFormScreen.routeNameAdd:
+          //     (context) => const ExpositorFormScreen(),
+          // FeiraFormScreen.routeNameAdd: (context) => const FeiraFormScreen(),
+          // ExpositorListScreen.routeName: (context) => const ExpositorListScreen(),
+          // AgendaScreen.routeName: (context) => const AgendaScreen(),
+          // MapaScreen.routeName: (context) => const MapaScreen(),
+          // CadastroExpositorScreen.routeName:
+          //     (context) => const CadastroExpositorScreen(),
+          // AdminAprovacaoScreen.routeName:
+          //     (context) => const AdminAprovacaoScreen(),
+        }
       },
     );
   }
@@ -279,50 +318,49 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Usa um Consumer para ouvir o UserProvider
     return Consumer<UserProvider>(
+      // Usando Consumer como na última vez
       builder: (context, userProvider, child) {
-        // Enquanto o UserProvider está a buscar os dados iniciais
         if (userProvider.isLoading) {
-          print(
-            "AuthWrapper: UserProvider está a carregar... Mostrando spinner.",
-          );
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // Se, após carregar, não houver utilizador, mostra a LoginScreen
         if (userProvider.usuario == null) {
-          print("AuthWrapper: Nenhum utilizador. Mostrando LoginScreen.");
-          return const LoginScreen();
+          // Redireciona para a tela de login usando pushNamed
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
+          });
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
-        // Se o utilizador é um admin, mostra a tela principal
         if (userProvider.usuario!.papel == 'admin') {
-          print("AuthWrapper: Utilizador é admin. Mostrando MainScaffold.");
           return const MainScaffold();
         }
 
-        // Se o utilizador é um expositor
         if (userProvider.usuario!.papel == 'expositor') {
-          // Verifica o status do perfil do expositor
           final statusExpositor = userProvider.expositorProfile?.status;
-          print(
-            "AuthWrapper: Utilizador é expositor com status: $statusExpositor",
-          );
+          print("AuthWrapper: Expositor logado com status: $statusExpositor");
 
           if (statusExpositor == 'ativo') {
-            return const MainScaffold(); // Se ativo, entra na app
+            return const MainScaffold();
+          } else if (statusExpositor == 'reprovado') {
+            // DIRECIONA PARA A TELA DE REPROVAÇÃO
+            return CadastroReprovadoScreen(
+              expositorReprovado: userProvider.expositorProfile,
+            );
           } else {
-            // Se o status for 'aguardando_aprovacao', 'reprovado',
-            // ou se o perfil ainda não foi encontrado, mostra a tela de espera.
+            // 'aguardando_aprovacao' ou qualquer outro estado
             return const AguardandoAprovacaoScreen();
           }
         }
 
-        // Caso de fallback (não deve acontecer)
-        return const LoginScreen();
+        return const LoginScreen(); // Fallback
       },
     );
   }

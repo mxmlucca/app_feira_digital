@@ -44,6 +44,8 @@ dependencies:
 
   provider: ^6.1.5 # Verifique a versão mais recente em pub.dev
 
+  url_launcher: ^6.3.0 # Verifique a versão mais recente em pub.dev
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

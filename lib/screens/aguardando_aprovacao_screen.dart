@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AguardandoAprovacaoScreen extends StatelessWidget {
   const AguardandoAprovacaoScreen({super.key});
 
+  static const String routeName = '/aguardando-aprovacao';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
