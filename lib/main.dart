@@ -294,8 +294,6 @@ class MyApp extends StatelessWidget {
               builder: (context) => const MainScaffold(),
             );
 
-          // LoginScreen.routeName: (context) => const LoginScreen(),
-          // MainScaffold.routeName: (context) => const MainScaffold(),
           // ExpositorFormScreen.routeNameAdd:
           //     (context) => const ExpositorFormScreen(),
           // FeiraFormScreen.routeNameAdd: (context) => const FeiraFormScreen(),
@@ -304,8 +302,10 @@ class MyApp extends StatelessWidget {
           // MapaScreen.routeName: (context) => const MapaScreen(),
           // CadastroExpositorScreen.routeName:
           //     (context) => const CadastroExpositorScreen(),
-          // AdminAprovacaoScreen.routeName:
-          //     (context) => const AdminAprovacaoScreen(),
+          case AdminAprovacaoScreen.routeName:
+            return MaterialPageRoute(
+              builder: (context) => const AdminAprovacaoScreen(),
+            );
         }
       },
     );
@@ -320,6 +320,7 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<UserProvider>(
       // Usando Consumer como na última vez
+      // Alternativa para o builder do Consumer no AuthWrapper
       builder: (context, userProvider, child) {
         if (userProvider.isLoading) {
           return const Scaffold(
@@ -328,29 +329,34 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (userProvider.usuario == null) {
-          // Redireciona para a tela de login usando pushNamed
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
-          });
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const LoginScreen();
         }
 
+        // Se o papel for admin, é simples.
         if (userProvider.usuario!.papel == 'admin') {
           return const MainScaffold();
         }
 
+        // Se o papel for expositor, a lógica é mais detalhada.
         if (userProvider.usuario!.papel == 'expositor') {
-          final statusExpositor = userProvider.expositorProfile?.status;
+          // Primeiro, verifica se o perfil do expositor já foi carregado.
+          // Se não, o UserProvider ainda está a buscar, então mostramos um spinner.
+          // Isto é crucial se getUsuario() e getExpositorPorId() não acontecem atomicamente.
+          if (userProvider.expositorProfile == null) {
+            print(
+              "AuthWrapper: Aguardando perfil do expositor ser carregado...",
+            );
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final statusExpositor = userProvider.expositorProfile!.status;
           print("AuthWrapper: Expositor logado com status: $statusExpositor");
 
           if (statusExpositor == 'ativo') {
             return const MainScaffold();
           } else if (statusExpositor == 'reprovado') {
-            // DIRECIONA PARA A TELA DE REPROVAÇÃO
             return CadastroReprovadoScreen(
               expositorReprovado: userProvider.expositorProfile,
             );
@@ -360,7 +366,8 @@ class AuthWrapper extends StatelessWidget {
           }
         }
 
-        return const LoginScreen(); // Fallback
+        // Se não for nem admin nem expositor, é um estado inesperado, manda para o login.
+        return const LoginScreen();
       },
     );
   }

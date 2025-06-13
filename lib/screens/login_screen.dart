@@ -36,11 +36,11 @@ class _LoginScreenState extends State<LoginScreen> {
           });
           // Redireciona para o MainScaffold após login bem-sucedido
           // Navigator.pushReplacementNamed(context, '/main-scaffold');
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/main-scaffold',
-            (route) => false,
-          );
+          // Navigator.pushNamedAndRemoveUntil(
+          //   context,
+          //   '/main-scaffold',
+          //   (route) => false,
+          // );
         }
       } on FirebaseAuthException catch (e) {
         String errorMessage = 'Ocorreu um erro.';
@@ -99,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // LOGO
                   Image.asset('assets/images/logoTrilhos.png', height: 150),
 
-                  const SizedBox(height: 48.0),
+                  const SizedBox(height: 70.0),
 
                   // EMAIL
                   TextFormField(

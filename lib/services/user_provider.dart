@@ -7,10 +7,8 @@ import 'firestore_service.dart';
 
 class UserProvider with ChangeNotifier {
   Usuario? _usuario;
-  Expositor?
-  _expositorProfile; // NOVO: para guardar os dados do expositor logado
-  bool _isLoading =
-      true; // NOVO: para controlar o estado de carregamento inicial
+  Expositor? _expositorProfile;
+  bool _isLoading = true;
 
   final FirestoreService _firestoreService = FirestoreService();
   StreamSubscription? _authStateSubscription;

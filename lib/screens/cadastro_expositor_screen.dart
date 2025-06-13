@@ -136,6 +136,8 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
       if (mounted) {
         await showDialog(
           context: context,
+          // Impede que o usuário feche o diálogo clicando fora dele
+          barrierDismissible: false,
           builder:
               (ctx) => AlertDialog(
                 title: const Text('Cadastro Enviado!'),
@@ -144,20 +146,24 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    // 1. Transforme o onPressed em uma função assíncrona
+                    onPressed: () async {
+                      // 2. Faça o logout do usuário com Firebase Auth
+                      await FirebaseAuth.instance.signOut();
+
+                      // 3. Navegue para a tela de login e remova todas as rotas anteriores
+                      // Adicione uma verificação 'mounted' por segurança antes de navegar
+                      if (mounted) {
+                        Navigator.of(
+                          context,
+                        ).pushNamedAndRemoveUntil('/login', (route) => false);
+                      }
+                    },
                     child: const Text('OK'),
                   ),
                 ],
               ),
         );
-        if (mounted) {
-          if (_isModoCorrecao) {
-            await FirebaseAuth.instance.signOut();
-          }
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil('/login', (route) => false);
-        }
       }
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Ocorreu um erro no cadastro.';
