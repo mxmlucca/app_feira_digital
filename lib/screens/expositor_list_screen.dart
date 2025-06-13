@@ -104,14 +104,13 @@ class _ExpositorListScreenState extends State<ExpositorListScreen>
   }
 
   void _carregarEFiltrarExpositores() {
-    // Ouve o stream de todos os expositores
     _firestoreService.getExpositores().listen((listaDoFirestore) {
-      if (mounted) {
-        setState(() {
-          _todosExpositoresFirestore = listaDoFirestore;
-          _filtrarExpositores(); // Aplica os filtros e pesquisa atuais
-        });
-      }
+      if (!mounted) return;
+      // Filtra apenas os expositores ativos
+      final ativos =
+          listaDoFirestore.where((ex) => ex.status == 'ativo').toList();
+      _todosExpositoresFirestore = ativos;
+      _filtrarExpositores();
     });
   }
 
@@ -171,16 +170,12 @@ class _ExpositorListScreenState extends State<ExpositorListScreen>
   }
 
   void _navigateToForm({Expositor? expositor}) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ExpositorFormScreen(expositor: expositor),
-        settings: RouteSettings(
-          name: ExpositorFormScreen.routeNameEdit,
-          arguments: expositor,
-        ),
-      ),
-    ).then((_) {
+    final String routeName =
+        expositor == null
+            ? ExpositorFormScreen.routeNameAdd
+            : ExpositorFormScreen.routeNameEdit;
+
+    Navigator.pushNamed(context, routeName, arguments: expositor).then((_) {
       // Quando volta do formulário, pode ser que a lista precise ser atualizada
       // _carregarEFiltrarExpositores(); // O Stream já faz isso, mas um setState pode forçar
       // Se o stream não pegar mudanças imediatas (o que não deve acontecer),
@@ -190,12 +185,10 @@ class _ExpositorListScreenState extends State<ExpositorListScreen>
   }
 
   void _navigateToDetail(Expositor expositor) {
-    print('Navegando para detalhes do expositor: ${expositor.nome}');
-    Navigator.push(
+    Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (context) => ExpositorDetailScreen(expositor: expositor),
-      ),
+      ExpositorDetailScreen.routeName,
+      arguments: expositor,
     );
   }
 

@@ -34,13 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() {
             _message = '';
           });
-          // Redireciona para o MainScaffold após login bem-sucedido
-          // Navigator.pushReplacementNamed(context, '/main-scaffold');
-          // Navigator.pushNamedAndRemoveUntil(
-          //   context,
-          //   '/main-scaffold',
-          //   (route) => false,
-          // );
         }
       } on FirebaseAuthException catch (e) {
         String errorMessage = 'Ocorreu um erro.';

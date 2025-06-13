@@ -46,6 +46,9 @@ dependencies:
 
   url_launcher: ^6.3.0 # Verifique a versão mais recente em pub.dev
 
+  image_picker: ^1.1.2 # Para selecionar imagens da galeria ou câmera
+  firebase_storage: ^12.1.0 # Para fazer upload de ficheiros para o Firebase
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

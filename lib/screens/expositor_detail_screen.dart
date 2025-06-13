@@ -12,6 +12,8 @@ class ExpositorDetailScreen extends StatefulWidget {
 
   const ExpositorDetailScreen({super.key, required this.expositor});
 
+  static const String routeName = '/expositores-detail';
+
   @override
   State<ExpositorDetailScreen> createState() => _ExpositorDetailScreenState();
 }
@@ -270,6 +272,15 @@ class _ExpositorDetailScreenState extends State<ExpositorDetailScreen> {
                     'Descrição',
                     widget.expositor.descricao,
                   ),
+                  // Adicione esta secção para mostrar a imagem
+                  const SizedBox(height: 24.0),
+                  Text('Documento Enviado', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 8.0),
+                  if (widget.expositor.rgUrl != null &&
+                      widget.expositor.rgUrl!.isNotEmpty)
+                    Image.network(widget.expositor.rgUrl!)
+                  else
+                    const Text('Nenhum documento encontrado.'),
                 ],
               ),
             ),

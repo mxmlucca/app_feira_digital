@@ -9,6 +9,7 @@ class Expositor {
   final String? situacao;
   final String status;
   final String? motivoReprovacao;
+  final String? rgUrl;
 
   Expositor({
     this.id,
@@ -21,6 +22,7 @@ class Expositor {
     this.situacao,
     this.status = 'aguardando_aprovacao',
     this.motivoReprovacao,
+    this.rgUrl,
   });
 
   factory Expositor.fromMap(Map<String, dynamic> data, String documentId) {
@@ -35,6 +37,7 @@ class Expositor {
       situacao: data['situacao'],
       status: data['status'] ?? 'ativo',
       motivoReprovacao: data['motivoReprovacao'],
+      rgUrl: data['rgUrl'],
     );
   }
 
@@ -49,6 +52,7 @@ class Expositor {
       'situacao': situacao,
       'status': status,
       'motivoReprovacao': motivoReprovacao,
+      'rgUrl': rgUrl,
     };
   }
 }

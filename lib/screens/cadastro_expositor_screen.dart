@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/expositor.dart';
 import '../models/usuario.dart';
 import '../services/firestore_service.dart';
+import '../services/user_provider.dart';
+// Certifique-se de que o caminho e o nome do arquivo estão corretos e que o arquivo contém a classe UserProvider.
 
 class CadastroExpositorScreen extends StatefulWidget {
   final Expositor? expositorParaCorrecao;
@@ -26,6 +32,8 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
   final _contatoController = TextEditingController();
   final _descricaoController = TextEditingController();
   final _numeroEstandeController = TextEditingController();
+  File? _rgImageFile;
+  final ImagePicker _picker = ImagePicker();
   String? _categoriaSelecionada;
   String? _situacaoSelecionada;
   bool _isSaving = false;
@@ -109,6 +117,12 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
       }
 
       if (user == null) throw Exception('Erro de autenticação.');
+      final storageRef = FirebaseStorage.instance.ref();
+      final rgPath = 'rg/${user.uid}.jpg';
+      final rgRef = storageRef.child(rgPath);
+
+      await rgRef.putFile(_rgImageFile!);
+      final rgUrl = await rgRef.getDownloadURL();
 
       final usuarioParaSalvar = Usuario(
         uid: user.uid,
@@ -128,6 +142,7 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
         numeroEstande: _numeroEstandeController.text.trim(),
         status: 'aguardando_aprovacao',
         motivoReprovacao: null,
+        rgUrl: rgUrl,
       );
 
       await _firestoreService.setUsuario(usuarioParaSalvar);
@@ -146,18 +161,21 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
                 ),
                 actions: [
                   TextButton(
-                    // 1. Transforme o onPressed em uma função assíncrona
-                    onPressed: () async {
-                      // 2. Faça o logout do usuário com Firebase Auth
-                      await FirebaseAuth.instance.signOut();
+                    onPressed: () {
+                      // 1. Fecha o diálogo
+                      Navigator.of(ctx).pop();
 
-                      // 3. Navegue para a tela de login e remova todas as rotas anteriores
-                      // Adicione uma verificação 'mounted' por segurança antes de navegar
-                      if (mounted) {
-                        Navigator.of(
-                          context,
-                        ).pushNamedAndRemoveUntil('/login', (route) => false);
-                      }
+                      // 2. Notifica o Provider para se atualizar.
+                      // O listen: false é crucial aqui porque estamos dentro de um callback.
+                      Provider.of<UserProvider>(
+                        context,
+                        listen: false,
+                      ).refreshUserData();
+
+                      // 3. Remove a tela de cadastro da pilha de navegação.
+                      // O AuthWrapper, que agora está visível e foi notificado,
+                      // tratará de mostrar a tela correta.
+                      Navigator.of(context).pop();
                     },
                     child: const Text('OK'),
                   ),
@@ -189,6 +207,25 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
         setState(() {
           _isSaving = false;
         });
+      }
+    }
+  }
+
+  Future<void> _pickRgImage() async {
+    try {
+      final XFile? rgImg = await _picker.pickImage(source: ImageSource.gallery);
+
+      if (rgImg != null) {
+        setState(() {
+          _rgImageFile = File(rgImg.path);
+        });
+      }
+    } catch (e) {
+      // Handle or log the error as needed
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao selecionar imagem: $e')),
+        );
       }
     }
   }
@@ -367,6 +404,28 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
               ),
 
               const SizedBox(height: 16),
+
+              // RG
+              Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child:
+                    _rgImageFile != null
+                        ? Image.file(_rgImageFile!, fit: BoxFit.cover)
+                        : const Center(
+                          child: Text('Nenhuma imagem selecionada.'),
+                        ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Selecionar Foto do RG'),
+                onPressed: _pickRgImage,
+              ),
 
               // NÚMERO DO ESTANDE
               // TextFormField(

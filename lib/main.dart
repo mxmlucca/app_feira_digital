@@ -10,12 +10,16 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart'; // Provider para gerenciamento de estado
 import 'services/user_provider.dart'; // Provider para gerenciar o estado do usuário
 
+import '../models/expositor.dart';
+
 /// Importação de telas e widgets
 import 'screens/login_screen.dart'; // Tela de login
 import 'screens/expositor_list_screen.dart'; // Tela de lista de expositores
 import 'screens/expositor_form_screen.dart'; // Tela de formulário de expositores
+import 'screens/expositor_detail_screen.dart'; // Tela de detalhes do expositor
 import 'screens/mapa_screen.dart'; // Tela de mapa
 import 'screens/agenda_screen.dart'; // Tela de agenda
+import 'screens/admin/admin_expositor_detail_screen.dart';
 import 'screens/feira_form_screen.dart'; // Tela de formulário de feira
 import 'screens/cadastro_expositor_screen.dart';
 import 'screens/aguardando_aprovacao_screen.dart';
@@ -294,10 +298,25 @@ class MyApp extends StatelessWidget {
               builder: (context) => const MainScaffold(),
             );
 
-          // ExpositorFormScreen.routeNameAdd:
-          //     (context) => const ExpositorFormScreen(),
+          case ExpositorFormScreen.routeNameAdd:
+            return MaterialPageRoute(
+              builder: (context) => const ExpositorFormScreen(),
+            );
+
+          case ExpositorFormScreen.routeNameEdit:
+            final expositor = settings.arguments as Expositor?;
+            return MaterialPageRoute(
+              builder: (context) => ExpositorFormScreen(expositor: expositor),
+            );
+
+          case ExpositorDetailScreen.routeName:
+            final expositor = settings.arguments as Expositor;
+            return MaterialPageRoute(
+              builder: (context) => ExpositorDetailScreen(expositor: expositor),
+            );
+
           // FeiraFormScreen.routeNameAdd: (context) => const FeiraFormScreen(),
-          // ExpositorListScreen.routeName: (context) => const ExpositorListScreen(),
+
           // AgendaScreen.routeName: (context) => const AgendaScreen(),
           // MapaScreen.routeName: (context) => const MapaScreen(),
           // CadastroExpositorScreen.routeName:
@@ -305,6 +324,13 @@ class MyApp extends StatelessWidget {
           case AdminAprovacaoScreen.routeName:
             return MaterialPageRoute(
               builder: (context) => const AdminAprovacaoScreen(),
+            );
+
+          case AdminExpositorDetailScreen.routeName:
+            final expositor = settings.arguments as Expositor;
+            return MaterialPageRoute(
+              builder:
+                  (context) => AdminExpositorDetailScreen(expositor: expositor),
             );
         }
       },

@@ -24,10 +24,21 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<void> _onAuthStateChanged(User? firebaseUser) async {
-    // Começa a carregar
-    if (_isLoading == false) {
+    // Esta lógica agora está dentro de um método que pode ser reutilizado
+    await _loadUserData(firebaseUser);
+  }
+
+  // NOVO MÉTODO PÚBLICO PARA ATUALIZAÇÃO MANUAL
+  Future<void> refreshUserData() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    await _loadUserData(currentUser);
+  }
+
+  // MÉTODO PRIVADO PARA CONCENTRAR A LÓGICA DE CARREGAMENTO
+  Future<void> _loadUserData(User? firebaseUser) async {
+    if (!_isLoading) {
       _isLoading = true;
-      notifyListeners(); // Notifica que o carregamento começou
+      notifyListeners();
     }
 
     if (firebaseUser == null) {
@@ -35,36 +46,28 @@ class UserProvider with ChangeNotifier {
       _expositorProfile = null;
       print("UserProvider: Utilizador deslogado.");
     } else {
-      print("UserProvider: Utilizador logado, buscando dados no Firestore...");
+      print(
+        "UserProvider: Verificando dados para o UID ${firebaseUser.uid}...",
+      );
       _usuario = await _firestoreService.getUsuario(firebaseUser.uid);
 
-      // Se o utilizador é um expositor, busca também o perfil de expositor
       if (_usuario?.papel == 'expositor') {
         _expositorProfile = await _firestoreService.getExpositorPorId(
           firebaseUser.uid,
         );
-        if (_expositorProfile != null) {
-          print(
-            "UserProvider: Perfil de expositor carregado. Status: ${_expositorProfile!.status}",
-          );
-        } else {
-          print(
-            "UserProvider: Perfil de expositor NÃO encontrado para o UID ${firebaseUser.uid}.",
-          );
-        }
+        print(
+          "UserProvider: Perfil de expositor carregado com status: ${_expositorProfile?.status}",
+        );
       } else {
-        _expositorProfile =
-            null; // Garante que o perfil de expositor está limpo se for admin
-        if (_usuario != null) {
-          print(
-            "UserProvider: Dados do utilizador carregados. Papel: ${_usuario!.papel}",
-          );
-        }
+        _expositorProfile = null; // Garante que está limpo para outros papéis
+        print(
+          "UserProvider: Utilizador carregado com papel: ${_usuario?.papel}",
+        );
       }
     }
 
-    _isLoading = false; // Terminou de carregar
-    notifyListeners(); // Notifica todos os widgets que os dados mudaram
+    _isLoading = false;
+    notifyListeners(); // Notifica os widgets que os dados mudaram (ou não) e o loading acabou
   }
 
   @override
