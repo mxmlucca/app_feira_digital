@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async'; // Para o Debouncer da pesquisa
-import '../models/expositor.dart';
-import '../services/firestore_service.dart';
+import '../../models/expositor.dart';
+import '../../services/firestore_service.dart';
 import 'expositor_form_screen.dart';
 import 'expositor_detail_screen.dart'; // Importa a tela de detalhes
-import '../widgets/expositor_list_item.dart'; // Nosso widget de item de lista
+import '../../widgets/expositor_list_item.dart'; // Nosso widget de item de lista
 
 // Supondo que kCoresCategorias e kOrdemCategorias (ou kCategoriasExpositor)
 // estão definidas aqui ou importadas de um ficheiro de constantes.

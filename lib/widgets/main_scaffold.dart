@@ -4,9 +4,9 @@ import '../services/user_provider.dart'; // Importar o nosso UserProvider
 
 // Importações das Telas
 import '../screens/home_screen.dart';
-import '../screens/expositor_list_screen.dart';
-import '../screens/mapa_screen.dart';
-import '../screens/feira_list_screen.dart';
+import '../screens/expositores/expositor_list_screen.dart';
+import '../screens/mapa/mapa_screen.dart';
+import '../screens/feiras/feira_list_screen.dart';
 import '../screens/profile/profile_loader_screen.dart';
 
 class MainScaffold extends StatefulWidget {

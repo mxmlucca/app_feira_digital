@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/expositor.dart';
-import '../models/feira.dart';
-import '../services/firestore_service.dart';
+import '../../models/expositor.dart';
+import '../../models/feira.dart';
+import '../../services/firestore_service.dart';
 import 'expositor_form_screen.dart';
 import 'package:provider/provider.dart';
-import '../services/user_provider.dart';
+import '../../services/user_provider.dart';
 
 class ExpositorDetailScreen extends StatefulWidget {
   final Expositor expositor;

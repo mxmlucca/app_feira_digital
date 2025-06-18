@@ -4,10 +4,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import '../models/expositor.dart';
-import '../models/usuario.dart';
-import '../services/firestore_service.dart';
-import '../services/user_provider.dart';
+import '../../models/expositor.dart';
+import '../../models/usuario.dart';
+import '../../services/firestore_service.dart';
+import '../../services/user_provider.dart';
 // Certifique-se de que o caminho e o nome do arquivo estão corretos e que o arquivo contém a classe UserProvider.
 
 class CadastroExpositorScreen extends StatefulWidget {

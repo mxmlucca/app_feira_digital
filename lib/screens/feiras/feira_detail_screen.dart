@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/feira.dart';
-import '../models/expositor.dart'; // Importar o model Expositor
-import '../services/firestore_service.dart';
+import '../../models/feira.dart';
+import '../../models/expositor.dart'; // Importar o model Expositor
+import '../../services/firestore_service.dart';
 import 'feira_form_screen.dart';
 import 'package:provider/provider.dart';
-import '../services/user_provider.dart';
+import '../../services/user_provider.dart';
 
 // Mapa de cores para categorias (pode mover para um ficheiro de constantes)
 const Map<String, Color> kCoresCategorias = {

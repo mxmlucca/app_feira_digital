@@ -16,17 +16,17 @@ import '../models/feira.dart'; // Modelo de Feira
 
 /// Importação de telas e widgets
 import 'screens/login_screen.dart'; // Tela de login
-import 'screens/expositor_list_screen.dart'; // Tela de lista de expositores
-import 'screens/expositor_form_screen.dart'; // Tela de formulário de expositores
-import 'screens/expositor_detail_screen.dart'; // Tela de detalhes do expositor
-import 'screens/mapa_screen.dart'; // Tela de mapa
-import 'screens/feira_list_screen.dart'; // Tela de agenda
+import 'screens/expositores/expositor_list_screen.dart'; // Tela de lista de expositores
+import 'screens/expositores/expositor_form_screen.dart'; // Tela de formulário de expositores
+import 'screens/expositores/expositor_detail_screen.dart'; // Tela de detalhes do expositor
+import 'screens/mapa/mapa_screen.dart'; // Tela de mapa
+import 'screens/feiras/feira_list_screen.dart'; // Tela de agenda
 import 'screens/admin/admin_expositor_detail_screen.dart';
-import 'screens/feira_form_screen.dart'; // Tela de formulário de feira
-import 'screens/cadastro_expositor_screen.dart';
-import 'screens/aguardando_aprovacao_screen.dart';
-import 'screens/cadastro_reprovado_screen.dart';
-import 'screens/mapa_viewer_screen.dart';
+import 'screens/feiras/feira_form_screen.dart'; // Tela de formulário de feira
+import 'screens/cadastro/cadastro_expositor_screen.dart';
+import 'screens/cadastro/aguardando_aprovacao_screen.dart';
+import 'screens/cadastro/cadastro_reprovado_screen.dart';
+import 'screens/mapa/mapa_viewer_screen.dart';
 import 'screens/admin/admin_aprovacao_screen.dart'; // Tela de aprovação de expositores para administradores
 import 'widgets/main_scaffold.dart'; // Scaffold principal com BottomNavigationBar
 

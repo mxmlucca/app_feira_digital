@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../models/expositor.dart'; // Importar o modelo Expositor
+import '../../models/expositor.dart'; // Importar o modelo Expositor
 import 'cadastro_expositor_screen.dart'; // Importar a tela de cadastro
 
 class CadastroReprovadoScreen extends StatelessWidget {

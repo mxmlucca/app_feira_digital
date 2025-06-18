@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/expositor.dart';
-import '../services/firestore_service.dart'; // Precisaremos do nosso serviço
+import '../../models/expositor.dart';
+import '../../services/firestore_service.dart'; // Precisaremos do nosso serviço
 
 // Em lib/screens/expositor_form_screen.dart (ou num ficheiro de constantes)
 const List<String> kCategoriasExpositor = [

@@ -3,10 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../models/feira.dart';
-import '../models/expositor.dart';
-import '../services/firestore_service.dart';
-import '../services/user_provider.dart';
+import '../../models/feira.dart';
+import '../../models/expositor.dart';
+import '../../services/firestore_service.dart';
+import '../../services/user_provider.dart';
 
 class MapaScreen extends StatefulWidget {
   const MapaScreen({super.key});

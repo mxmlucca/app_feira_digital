@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/feira.dart';
-import '../services/firestore_service.dart';
+import '../../models/feira.dart';
+import '../../services/firestore_service.dart';
 import 'feira_form_screen.dart';
 import 'feira_detail_screen.dart';
 

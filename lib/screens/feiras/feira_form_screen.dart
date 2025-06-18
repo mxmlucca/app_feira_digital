@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import '../models/feira.dart';
-import '../services/firestore_service.dart';
+import '../../models/feira.dart';
+import '../../services/firestore_service.dart';
 
 class FeiraFormScreen extends StatefulWidget {
   final Feira? feiraEvento;

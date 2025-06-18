@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/expositor.dart';
 import '../../services/firestore_service.dart';
-import '../expositor_detail_screen.dart'; // A tela que queremos mostrar no final
+import '../expositores/expositor_detail_screen.dart'; // A tela que queremos mostrar no final
 
 class ProfileLoaderScreen extends StatefulWidget {
   const ProfileLoaderScreen({super.key});
