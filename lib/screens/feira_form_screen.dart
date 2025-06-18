@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Para formatação de datas
-import '../models/feira_evento.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import '../models/feira.dart';
 import '../services/firestore_service.dart';
 
 class FeiraFormScreen extends StatefulWidget {
-  final FeiraEvento? feiraEvento;
+  final Feira? feiraEvento;
 
   const FeiraFormScreen({super.key, this.feiraEvento});
 
@@ -22,9 +25,11 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
   late TextEditingController _tituloController;
   late TextEditingController _anotacoesController;
   DateTime? _dataSelecionada;
-  StatusFeira _statusSelecionado = StatusFeira.planejada;
-
+  StatusFeira _statusSelecionado = StatusFeira.atual;
+  File? _mapaSelecionado;
+  String? _mapaUrlExistente;
   bool _isSaving = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -36,7 +41,8 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
       text: widget.feiraEvento?.anotacoes ?? '',
     );
     _dataSelecionada = widget.feiraEvento?.data;
-    _statusSelecionado = widget.feiraEvento?.status ?? StatusFeira.planejada;
+    _statusSelecionado = widget.feiraEvento?.status ?? StatusFeira.atual;
+    _mapaUrlExistente = widget.feiraEvento?.mapaUrl;
   }
 
   @override
@@ -86,57 +92,74 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
     }
   }
 
-  Future<void> _salvarFeira() async {
-    if (_formKey.currentState!.validate()) {
-      if (_dataSelecionada == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Por favor, selecione uma data para a feira.'),
-          ),
-        );
-        return;
-      }
+  Future<void> _selecionarMapa() async {
+    final XFile? imagemEscolhida = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+    if (imagemEscolhida != null) {
       setState(() {
-        _isSaving = true;
+        _mapaSelecionado = File(imagemEscolhida.path);
       });
-      try {
-        final feiraParaSalvar = FeiraEvento(
-          id: widget.feiraEvento?.id,
-          titulo: _tituloController.text.trim(),
-          data: _dataSelecionada!,
-          anotacoes: _anotacoesController.text.trim(),
-          status: _statusSelecionado,
-          presencaExpositores: widget.feiraEvento?.presencaExpositores ?? {},
-        );
+    }
+  }
 
-        if (widget.feiraEvento == null) {
-          await _firestoreService.adicionarFeiraEvento(feiraParaSalvar);
-          if (mounted)
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Feira adicionada com sucesso!')),
-            );
-        } else {
-          await _firestoreService.atualizarFeiraEvento(feiraParaSalvar);
-          if (mounted)
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Feira atualizada com sucesso!')),
-            );
-        }
-        if (mounted)
-          Navigator.of(
-            context,
-          ).pop(true); // Retorna true para indicar que algo foi salvo
-      } catch (e) {
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Erro ao salvar feira: $e')));
-      } finally {
-        if (mounted)
-          setState(() {
-            _isSaving = false;
-          });
+  Future<void> _salvarFeira() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_dataSelecionada == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, selecione uma data para a feira.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      String? mapaUrl = _mapaUrlExistente;
+
+      // Se uma nova imagem de mapa foi selecionada, faz o upload
+      if (_mapaSelecionado != null) {
+        final feiraId =
+            widget.feiraEvento?.id ?? _firestoreService.getNewFeiraId();
+        final storageRef = FirebaseStorage.instance.ref();
+        final caminhoMapa = 'mapas_feiras/$feiraId.jpg';
+        final mapaRef = storageRef.child(caminhoMapa);
+
+        await mapaRef.putFile(_mapaSelecionado!);
+        mapaUrl = await mapaRef.getDownloadURL();
       }
+
+      final feiraParaSalvar = Feira(
+        id: widget.feiraEvento?.id,
+        titulo: _tituloController.text.trim(),
+        data: _dataSelecionada!,
+        anotacoes: _anotacoesController.text.trim(),
+        status: _statusSelecionado,
+        mapaUrl: mapaUrl, // Passa a URL nova ou a existente
+        presencaExpositores: widget.feiraEvento?.presencaExpositores ?? {},
+      );
+
+      if (widget.feiraEvento == null) {
+        await _firestoreService.adicionarFeiraEvento(feiraParaSalvar);
+      } else {
+        await _firestoreService.atualizarFeiraEvento(feiraParaSalvar);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Feira salva com sucesso!')),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erro ao salvar feira: $e')));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -229,34 +252,65 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Seletor de Status
+              const SizedBox(height: 20),
+
+              // Seletor de Mapa
+              const Text("Mapa da Feira"),
+              const SizedBox(height: 8),
+              Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child:
+                    _mapaSelecionado != null
+                        ? Image.file(_mapaSelecionado!, fit: BoxFit.cover)
+                        : (_mapaUrlExistente != null
+                            ? Image.network(
+                              _mapaUrlExistente!,
+                              fit: BoxFit.cover,
+                            )
+                            : const Center(
+                              child: Text('Nenhum mapa selecionado.'),
+                            )),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Selecionar Imagem do Mapa'),
+                onPressed: _selecionarMapa,
+              ),
+
+              const SizedBox(height: 20),
+
+              // Seletor de Status (Atualizado)
               DropdownButtonFormField<StatusFeira>(
                 decoration: const InputDecoration(
-                  hintText: 'Status da Feira',
+                  labelText: 'Status da Feira',
                   prefixIcon: Icon(Icons.flag_outlined),
                 ),
                 value: _statusSelecionado,
                 items:
-                    StatusFeira.values.map((StatusFeira status) {
+                    StatusFeira.values.map((status) {
                       return DropdownMenuItem<StatusFeira>(
                         value: status,
                         child: Text(_statusParaStringLegivel(status)),
                       );
                     }).toList(),
-                onChanged: (StatusFeira? novoValor) {
-                  if (novoValor != null) {
-                    setState(() {
-                      _statusSelecionado = novoValor;
-                    });
-                  }
-                },
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                validator:
-                    (value) => value == null ? 'Selecione um status' : null,
+                onChanged:
+                    (novoValor) =>
+                        setState(() => _statusSelecionado = novoValor!),
               ),
+
               const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _isSaving ? null : _salvarFeira,
+                child:
+                    _isSaving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Salvar Feira'),
+              ),
 
               // Botão Salvar
               ElevatedButton(

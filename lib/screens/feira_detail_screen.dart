@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/feira_evento.dart';
+import '../models/feira.dart';
 import '../models/expositor.dart'; // Importar o model Expositor
 import '../services/firestore_service.dart';
 import 'feira_form_screen.dart';
+import 'package:provider/provider.dart';
+import '../services/user_provider.dart';
 
 // Mapa de cores para categorias (pode mover para um ficheiro de constantes)
 const Map<String, Color> kCoresCategorias = {
@@ -16,9 +18,11 @@ const Map<String, Color> kCoresCategorias = {
 };
 
 class FeiraDetailScreen extends StatefulWidget {
-  final FeiraEvento feiraEvento;
+  final Feira feiraEvento;
 
   const FeiraDetailScreen({super.key, required this.feiraEvento});
+
+  static const String routeName = '/feira-detalhe';
 
   @override
   State<FeiraDetailScreen> createState() => _FeiraDetailScreenState();
@@ -44,8 +48,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
       widget.feiraEvento.presencaExpositores ?? {},
     );
 
-    if (_statusAtualDaFeira != StatusFeira.realizada &&
-        _statusAtualDaFeira != StatusFeira.cancelada) {
+    if (_statusAtualDaFeira != StatusFeira.finalizada) {
       _carregarTodosExpositores();
     } else if (widget.feiraEvento.presencaExpositores != null &&
         widget.feiraEvento.presencaExpositores!.isNotEmpty) {
@@ -150,7 +153,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
       _isSavingStatus = true;
     });
     try {
-      FeiraEvento feiraAtualizada = FeiraEvento(
+      Feira feiraAtualizada = Feira(
         id: widget.feiraEvento.id,
         titulo: widget.feiraEvento.titulo,
         data: widget.feiraEvento.data,
@@ -187,7 +190,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
       _isSavingStatus = true;
     });
     try {
-      FeiraEvento feiraComPresencasAtualizadas = FeiraEvento(
+      Feira feiraComPresencasAtualizadas = Feira(
         id: widget.feiraEvento.id,
         titulo: widget.feiraEvento.titulo,
         data: widget.feiraEvento.data,
@@ -223,9 +226,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    bool podeEditarPresenca =
-        (_statusAtualDaFeira == StatusFeira.planejada ||
-            _statusAtualDaFeira == StatusFeira.proxima);
+    bool podeEditarPresenca = (_statusAtualDaFeira == StatusFeira.atual);
 
     if (_todosExpositores.isEmpty) {
       if (podeEditarPresenca) {
@@ -236,17 +237,17 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
             textAlign: TextAlign.center,
           ),
         );
-      } else if (_statusAtualDaFeira == StatusFeira.realizada &&
+      } else if (_statusAtualDaFeira == StatusFeira.finalizada &&
           (widget.feiraEvento.presencaExpositores == null ||
               widget.feiraEvento.presencaExpositores!.isEmpty)) {
         return const Padding(
           padding: EdgeInsets.all(16.0),
           child: Text(
-            'Nenhuma presença registada para esta feira realizada.',
+            'Nenhuma presença registada para esta feira finalizada.',
             textAlign: TextAlign.center,
           ),
         );
-      } else if (_statusAtualDaFeira == StatusFeira.realizada) {
+      } else if (_statusAtualDaFeira == StatusFeira.finalizada) {
         return const Padding(
           padding: EdgeInsets.all(16.0),
           child: Text(
@@ -453,9 +454,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    bool podeEditarPresencaAgora =
-        (_statusAtualDaFeira == StatusFeira.planejada ||
-            _statusAtualDaFeira == StatusFeira.proxima);
+    bool podeEditarPresencaAgora = (_statusAtualDaFeira == StatusFeira.atual);
 
     // Lógica de carregamento inicial ou quando o status da feira muda
     // Esta lógica pode precisar de refinamento para evitar chamadas desnecessárias
@@ -465,7 +464,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _carregarTodosExpositores(),
       );
-    } else if (_statusAtualDaFeira == StatusFeira.realizada &&
+    } else if (_statusAtualDaFeira == StatusFeira.finalizada &&
         _todosExpositores.isEmpty &&
         !_isLoadingExpositores) {
       if (widget.feiraEvento.presencaExpositores != null &&
@@ -475,6 +474,9 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
         );
       }
     }
+
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final bool isAdmin = userProvider.usuario?.papel == 'admin';
 
     return Scaffold(
       appBar: AppBar(
@@ -558,54 +560,96 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
               ),
               const SizedBox(height: 24.0),
             ],
+
             const Divider(height: 32.0),
-            Text(
-              'Alterar Status da Feira:',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8.0),
-            DropdownButtonFormField<StatusFeira>(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 8.0,
+
+            // // Status
+            // Text(
+            //   'Alterar Status da Feira:',
+            //   style: Theme.of(
+            //     context,
+            //   ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            // ),
+            // const SizedBox(height: 8.0),
+            // DropdownButtonFormField<StatusFeira>(
+            //   decoration: const InputDecoration(
+            //     border: OutlineInputBorder(),
+            //     contentPadding: EdgeInsets.symmetric(
+            //       horizontal: 12.0,
+            //       vertical: 8.0,
+            //     ),
+            //   ),
+            //   value: _statusSelecionadoParaEdicao,
+            //   items:
+            //       StatusFeira.values.map((StatusFeira status) {
+            //         return DropdownMenuItem<StatusFeira>(
+            //           value: status,
+            //           child: Text(_statusParaStringLegivel(status)),
+            //         );
+            //       }).toList(),
+            //   onChanged: (StatusFeira? novoValor) {
+            //     if (novoValor != null) {
+            //       setState(() {
+            //         _statusSelecionadoParaEdicao = novoValor;
+            //       });
+            //     }
+            //   },
+            // ),
+            // const SizedBox(height: 16.0),
+            // ElevatedButton(
+            //   onPressed: _isSavingStatus ? null : _salvarNovoStatus,
+            //   child:
+            //       _isSavingStatus
+            //           ? const SizedBox(
+            //             height: 20,
+            //             width: 20,
+            //             child: CircularProgressIndicator(
+            //               strokeWidth: 2,
+            //               color: Colors.white,
+            //             ),
+            //           )
+            //           : const Text('Salvar Novo Status'),
+            // ),
+            const Divider(height: 32.0),
+
+            // Ativar Feira
+            if (isAdmin) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.star_outline),
+                  label: const Text('Tornar Esta Feira Ativa'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                  ),
+                  onPressed: () async {
+                    try {
+                      await _firestoreService.setFeiraAtiva(
+                        widget.feiraEvento.id!,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Feira definida como ativa com sucesso!',
+                          ),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Erro ao definir feira ativa: $e'),
+                        ),
+                      );
+                    }
+                  },
                 ),
               ),
-              value: _statusSelecionadoParaEdicao,
-              items:
-                  StatusFeira.values.map((StatusFeira status) {
-                    return DropdownMenuItem<StatusFeira>(
-                      value: status,
-                      child: Text(_statusParaStringLegivel(status)),
-                    );
-                  }).toList(),
-              onChanged: (StatusFeira? novoValor) {
-                if (novoValor != null) {
-                  setState(() {
-                    _statusSelecionadoParaEdicao = novoValor;
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: 16.0),
-            ElevatedButton(
-              onPressed: _isSavingStatus ? null : _salvarNovoStatus,
-              child:
-                  _isSavingStatus
-                      ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                      : const Text('Salvar Novo Status'),
-            ),
+            ],
+
             const Divider(height: 32.0),
+
             Text(
               'Lista de Presença',
               style: Theme.of(

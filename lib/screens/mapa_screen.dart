@@ -1,136 +1,162 @@
+// lib/screens/mapa_screen.dart
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../models/feira.dart';
+import '../models/expositor.dart';
+import '../services/firestore_service.dart';
+import '../services/user_provider.dart';
 
-class MapaScreen extends StatelessWidget {
+class MapaScreen extends StatefulWidget {
   const MapaScreen({super.key});
-
   static const String routeName = '/mapa';
 
   @override
-  Widget build(BuildContext context) {
-    const String nomeImagemMapa =
-        'layout.png'; // Certifique-se que este é o nome correto do seu asset
+  State<MapaScreen> createState() => _MapaScreenState();
+}
 
-    // Cores baseadas na sua imagem de referência
-    // Estas cores podem vir do seu ThemeData se as padronizou lá
-    final Color corDeFundoDaTela =
-        Theme.of(context).colorScheme.secondary; // Amarelo, p. ex.
-    final Color corDaMoldura =
-        Theme.of(
-          context,
-        ).colorScheme.primary; // Magenta/Rosa escuro para a moldura/botão
+class _MapaScreenState extends State<MapaScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  late Future<Feira?> _feiraAtualFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _feiraAtualFuture = _firestoreService.getFeiraAtual();
+  }
+
+  Widget _buildInfoCard(
+    BuildContext context, {
+    required Feira feira,
+    Expositor? expositor,
+  }) {
+    final theme = Theme.of(context);
+    final bool isExpositor = expositor != null;
+
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              feira.titulo,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: Colors.grey.shade700,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat(
+                    'dd \'de\' MMMM \'de\' yyyy',
+                    'pt_BR',
+                  ).format(feira.data),
+                  style: theme.textTheme.titleMedium,
+                ),
+              ],
+            ),
+            if (isExpositor) ...[
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Icon(Icons.storefront, size: 16, color: Colors.grey.shade700),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Seu Estande: ${expositor.numeroEstande ?? "Não definido"}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Acede ao UserProvider para saber se é um expositor e obter os seus dados
+    final userProvider = Provider.of<UserProvider>(context);
+    final expositorProfile = userProvider.expositorProfile;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mapa da Feira'),
-        // A cor da AppBar virá do appBarTheme no main.dart
-      ),
-      // Cor de fundo da tela (fora do "quadro")
-      backgroundColor: corDeFundoDaTela,
-      body: Padding(
-        padding: const EdgeInsets.all(16.0), // Um padding geral para a tela
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch, // Estica os filhos horizontalmente
-          children: <Widget>[
-            // O "Quadro" do Mapa
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(
-                  8.0,
-                ), // Espaçamento interno da moldura
-                decoration: BoxDecoration(
-                  color:
-                      Colors
-                          .white, // Cor de fundo do "quadro" onde a imagem fica
-                  border: Border.all(
-                    color: corDaMoldura, // Cor da borda da moldura
-                    width: 4.0, // Largura da borda
-                  ),
-                  borderRadius: BorderRadius.circular(
-                    12.0,
-                  ), // Bordas arredondadas para o quadro
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3), // Posição da sombra
-                    ),
-                  ],
-                ),
-                child: InteractiveViewer(
+      appBar: AppBar(title: const Text('Feira Atual')),
+      body: FutureBuilder<Feira?>(
+        future: _feiraAtualFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Erro ao carregar dados da feira: ${snapshot.error}'),
+            );
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text('Nenhuma feira ativa no momento.'));
+          }
+
+          final feira = snapshot.data!;
+          final mapaUrl = feira.mapaUrl;
+
+          return ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              // Card com as informações
+              _buildInfoCard(
+                context,
+                feira: feira,
+                expositor: expositorProfile,
+              ),
+
+              // Mapa Interativo
+              if (mapaUrl != null && mapaUrl.isNotEmpty)
+                InteractiveViewer(
                   panEnabled: true,
                   minScale: 0.5,
                   maxScale: 4.0,
-                  boundaryMargin: const EdgeInsets.all(
-                    8.0,
-                  ), // Margem para zoom dentro do quadro
-                  child: Center(
-                    child: Image.asset(
-                      'assets/images/$nomeImagemMapa', // Certifique-se que este caminho está correto
-                      fit: BoxFit.contain,
-                      errorBuilder: (
-                        BuildContext context,
-                        Object exception,
-                        StackTrace? stackTrace,
-                      ) {
-                        return const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.red,
-                                size: 50,
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Mapa não carregado.',
-                                textAlign: TextAlign.center,
-                              ),
-                              Text(
-                                'Verifique o caminho em assets/images/',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ],
+                  child: Image.network(
+                    mapaUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder:
+                        (context, child, progress) =>
+                            progress == null
+                                ? child
+                                : const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                    errorBuilder:
+                        (context, error, stackTrace) => const Center(
+                          child: Text(
+                            'Não foi possível carregar a imagem do mapa.',
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                  ),
+                )
+              else
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Text('A feira atual não possui um mapa disponível.'),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24.0), // Espaço entre o mapa e o botão
-            // Botão "Atualizar Imagem"
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    corDaMoldura, // Usando a cor da "moldura" para o botão
-                foregroundColor:
-                    Theme.of(
-                      context,
-                    ).colorScheme.onPrimary, // Cor do texto no botão
-                // O padding e textStyle podem vir do tema global ou ser definidos aqui
-                // padding: const EdgeInsets.symmetric(vertical: 16.0),
-                // textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              onPressed: () {
-                // Lógica futura para upload de imagem
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Funcionalidade de atualizar mapa a ser implementada!',
-                    ),
-                  ),
-                );
-                print('Botão Atualizar Imagem pressionado');
-              },
-              child: const Text('Atualizar Imagem'),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }

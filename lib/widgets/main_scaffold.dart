@@ -6,7 +6,7 @@ import '../services/user_provider.dart'; // Importar o nosso UserProvider
 import '../screens/home_screen.dart';
 import '../screens/expositor_list_screen.dart';
 import '../screens/mapa_screen.dart';
-import '../screens/agenda_screen.dart';
+import '../screens/feira_list_screen.dart';
 import '../screens/profile/profile_loader_screen.dart';
 
 class MainScaffold extends StatefulWidget {

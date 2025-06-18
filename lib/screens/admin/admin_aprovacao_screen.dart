@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/expositor.dart';
 import '../../services/firestore_service.dart';
 import 'package:intl/intl.dart';
+import 'admin_expositor_detail_screen.dart';
 
 class AdminAprovacaoScreen extends StatefulWidget {
   const AdminAprovacaoScreen({super.key});
@@ -13,84 +14,6 @@ class AdminAprovacaoScreen extends StatefulWidget {
 
 class _AdminAprovacaoScreenState extends State<AdminAprovacaoScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-
-  Future<void> _processarAprovacao(String id, bool aprovar) async {
-    String novoStatus;
-    String acao;
-
-    if (aprovar) {
-      novoStatus = 'ativo';
-      acao = 'aprovado';
-      try {
-        await _firestoreService.atualizarStatusExpositor(id, novoStatus);
-      } catch (e) {
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Erro ao aprovar: $e')));
-        return;
-      }
-    } else {
-      // SE FOR REPROVAR, ABRE UMA CAIXA DE DIÁLOGO
-      final motivoController = TextEditingController();
-      final motivo = await showDialog<String>(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Reprovar Cadastro'),
-              content: TextField(
-                controller: motivoController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Digite o motivo da reprovação',
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed:
-                      () => Navigator.of(context).pop(motivoController.text),
-                  child: const Text('Confirmar Reprovação'),
-                ),
-              ],
-            ),
-      );
-
-      if (motivo == null || motivo.trim().isEmpty) {
-        // Admin cancelou ou não escreveu um motivo
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Reprovação cancelada.')));
-        return;
-      }
-
-      novoStatus = 'reprovado';
-      acao = 'reprovado';
-      try {
-        // Precisamos de um método no serviço que salve também o motivo
-        await _firestoreService.atualizarStatusExpositor(
-          id,
-          novoStatus,
-          motivo: motivo,
-        );
-      } catch (e) {
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Erro ao reprovar: $e')));
-        return;
-      }
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Expositor $acao com sucesso!')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,40 +50,43 @@ class _AdminAprovacaoScreenState extends State<AdminAprovacaoScreen> {
                   horizontal: 8.0,
                   vertical: 6.0,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        expositor.nome,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 4),
-                      Text('Email: ${expositor.email}'),
-                      Text('Contato: ${expositor.contato}'),
-                      Text('Categoria: ${expositor.tipoProdutoServico}'),
-                      const Divider(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed:
-                                () => _processarAprovacao(expositor.id!, false),
-                            child: const Text(
-                              'Reprovar',
-                              style: TextStyle(color: Colors.red),
-                            ),
+                // Torna o Card clicável
+                child: InkWell(
+                  onTap: () {
+                    // Navega para a nova tela de detalhes, passando o expositor
+                    Navigator.pushNamed(
+                      context,
+                      AdminExpositorDetailScreen.routeName,
+                      arguments: expositor,
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(
+                    10.0,
+                  ), // Raio da borda do Card
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                expositor.nome,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 4),
+                              Text('Email: ${expositor.email}'),
+                              Text(
+                                'Categoria: ${expositor.tipoProdutoServico}',
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed:
-                                () => _processarAprovacao(expositor.id!, true),
-                            child: const Text('Aprovar'),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        // Adiciona um ícone para indicar que é navegável
+                        const Icon(Icons.arrow_forward_ios, color: Colors.grey),
+                      ],
+                    ),
                   ),
                 ),
               );

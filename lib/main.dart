@@ -9,8 +9,10 @@ import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth para autenti
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart'; // Provider para gerenciamento de estado
 import 'services/user_provider.dart'; // Provider para gerenciar o estado do usuário
+import 'package:firebase_app_check/firebase_app_check.dart'; // Importe o pacote
 
 import '../models/expositor.dart';
+import '../models/feira.dart'; // Modelo de Feira
 
 /// Importação de telas e widgets
 import 'screens/login_screen.dart'; // Tela de login
@@ -18,12 +20,13 @@ import 'screens/expositor_list_screen.dart'; // Tela de lista de expositores
 import 'screens/expositor_form_screen.dart'; // Tela de formulário de expositores
 import 'screens/expositor_detail_screen.dart'; // Tela de detalhes do expositor
 import 'screens/mapa_screen.dart'; // Tela de mapa
-import 'screens/agenda_screen.dart'; // Tela de agenda
+import 'screens/feira_list_screen.dart'; // Tela de agenda
 import 'screens/admin/admin_expositor_detail_screen.dart';
 import 'screens/feira_form_screen.dart'; // Tela de formulário de feira
 import 'screens/cadastro_expositor_screen.dart';
 import 'screens/aguardando_aprovacao_screen.dart';
 import 'screens/cadastro_reprovado_screen.dart';
+import 'screens/mapa_viewer_screen.dart';
 import 'screens/admin/admin_aprovacao_screen.dart'; // Tela de aprovação de expositores para administradores
 import 'widgets/main_scaffold.dart'; // Scaffold principal com BottomNavigationBar
 
@@ -37,6 +40,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR', null);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await FirebaseAppCheck.instance.activate(
+    // Para ambiente de desenvolvimento web, use reCAPTCHA v3.
+    // Para mobile, ele usará o Play Integrity (Android) ou Device Check (iOS).
+    webProvider: ReCaptchaV3Provider(
+      'recaptcha-v3-site-key',
+    ), // Você obterá esta chave no console do Google Cloud
+  );
+
   runApp(
     // Envolve a aplicação com o provider
     ChangeNotifierProvider(
@@ -313,6 +325,25 @@ class MyApp extends StatelessWidget {
             final expositor = settings.arguments as Expositor;
             return MaterialPageRoute(
               builder: (context) => ExpositorDetailScreen(expositor: expositor),
+            );
+
+          case FeiraFormScreen.routeNameAdd:
+            // Rota para adicionar uma nova feira
+            return MaterialPageRoute(
+              builder: (context) => const FeiraFormScreen(),
+            );
+
+          case FeiraFormScreen.routeNameEdit:
+            // Rota para editar uma feira existente
+            final feiraEvento = settings.arguments as Feira?;
+            return MaterialPageRoute(
+              builder: (context) => FeiraFormScreen(feiraEvento: feiraEvento),
+            );
+
+          case MapaViewerScreen.routeName:
+            final mapaUrl = settings.arguments as String;
+            return MaterialPageRoute(
+              builder: (context) => MapaViewerScreen(mapaUrl: mapaUrl),
             );
 
           // FeiraFormScreen.routeNameAdd: (context) => const FeiraFormScreen(),

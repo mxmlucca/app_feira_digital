@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/feira_evento.dart'; // Importe o seu modelo FeiraEvento
+import '../models/feira.dart'; // Importe o seu modelo FeiraEvento
 
 class FeiraListItem extends StatelessWidget {
-  final FeiraEvento feiraEvento;
+  final Feira feiraEvento;
+  final bool isAtiva;
   final VoidCallback? onTap;
 
-  const FeiraListItem({super.key, required this.feiraEvento, this.onTap});
+  const FeiraListItem({
+    super.key,
+    required this.feiraEvento,
+    this.isAtiva = false,
+    this.onTap,
+  });
 
   // Função helper para obter a cor e o ícone com base no status da feira
   ({IconData icon, Color color}) _getStatusIconAndColor(
@@ -14,25 +20,13 @@ class FeiraListItem extends StatelessWidget {
     BuildContext context,
   ) {
     switch (status) {
-      case StatusFeira.planejada:
+      case StatusFeira.atual:
         return (
           icon: Icons.calendar_today_outlined,
           color: Colors.blue.shade700,
         );
-      case StatusFeira.proxima:
-        return (
-          icon: Icons.notifications_active_outlined,
-          color: Theme.of(context).colorScheme.secondary,
-        );
-      case StatusFeira.realizada:
+      case StatusFeira.finalizada:
         return (icon: Icons.check_circle_outline, color: Colors.green.shade700);
-      case StatusFeira.cancelada:
-        return (
-          icon: Icons.cancel_outlined,
-          color: Theme.of(context).colorScheme.error,
-        );
-      default:
-        return (icon: Icons.help_outline, color: Colors.grey);
     }
   }
 
@@ -48,51 +42,58 @@ class FeiraListItem extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      // O estilo do Card virá do ThemeData
+      // Adiciona uma borda colorida se a feira for ativa
+      shape:
+          isAtiva
+              ? RoundedRectangleBorder(
+                side: BorderSide(
+                  color: theme.colorScheme.secondary,
+                  width: 2.5,
+                ),
+                borderRadius: BorderRadius.circular(10.0),
+              )
+              : null, // Usa o shape padrão do tema se não for ativa
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(
-          10.0,
-        ), // Deve corresponder ao CardTheme
+        // ... (resto do seu código do InkWell)
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Ícone de Status
-              Icon(statusStyle.icon, color: statusStyle.color, size: 40),
-              const SizedBox(width: 16.0),
-              // Coluna com Título e Data/Status
+              // ... (seu ícone de status)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Adiciona um ícone e texto de "ATIVA"
+                    if (isAtiva)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star,
+                            size: 16,
+                            color: theme.colorScheme.secondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'FEIRA ATIVA',
+                            style: TextStyle(
+                              color: theme.colorScheme.secondary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (isAtiva) const SizedBox(height: 4),
                     Text(
                       feiraEvento.titulo,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                      // ...
                     ),
-                    const SizedBox(height: 4.0),
-                    Text(
-                      'Data: ${DateFormat('dd/MM/yyyy').format(feiraEvento.data)}',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    Text(
-                      'Status: ${_statusParaStringLegivel(feiraEvento.status)}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color:
-                            statusStyle
-                                .color, // Usa a mesma cor do ícone para o texto do status
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    // ... (resto da sua coluna de textos)
                   ],
                 ),
               ),
-              const SizedBox(width: 8.0),
-              // Ícone para indicar que é clicável
-              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+              // ...
             ],
           ),
         ),

@@ -1,20 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Enum para os status da feira, para melhor controlo e clareza
-enum StatusFeira {
-  planejada,
-  proxima, // Poderíamos usar isto para feiras que estão para acontecer em breve
-  realizada,
-  cancelada,
-}
+enum StatusFeira { atual, finalizada }
 
-class FeiraEvento {
+class Feira {
   final String? id; // ID do documento no Firestore
   final DateTime data; // Data da feira
   final String
   titulo; // Um título ou nome para a edição da feira (ex: "Feira de Maio", "Edição de Natal")
   final String anotacoes; // Anotações gerais sobre a feira
   final StatusFeira status; // Status atual da feira
+  final String? mapaUrl;
 
   // Lista de Presença:
   // Chave: ID do Expositor (String)
@@ -22,13 +18,14 @@ class FeiraEvento {
   // Usamos '?' para indicar que pode ser nulo, especialmente para feiras planejadas
   final Map<String, bool?>? presencaExpositores;
 
-  FeiraEvento({
+  Feira({
     this.id,
     required this.data,
     required this.titulo,
     this.anotacoes = '', // Anotações podem ser opcionais
-    this.status = StatusFeira.planejada, // Padrão para 'planejada'
-    this.presencaExpositores, // Inicialmente pode ser nulo ou vazio
+    this.status = StatusFeira.atual, // Padrão para 'atual'
+    this.mapaUrl,
+    this.presencaExpositores,
   });
 
   // Helper para converter o enum StatusFeira para String (para guardar no Firestore)
@@ -36,24 +33,21 @@ class FeiraEvento {
 
   // Helper para converter String (do Firestore) para o enum StatusFeira
   static StatusFeira statusFromString(String? statusStr) {
-    if (statusStr == null) return StatusFeira.planejada;
-    try {
-      return StatusFeira.values.firstWhere(
-        (e) => e.toString().split('.').last == statusStr,
-      );
-    } catch (e) {
-      return StatusFeira
-          .planejada; // Valor padrão em caso de string desconhecida
+    if (statusStr == 'finalizada') {
+      return StatusFeira.finalizada;
     }
+    // Qualquer outro caso, ou se for nulo, consideramos como 'atual'
+    return StatusFeira.atual;
   }
 
-  factory FeiraEvento.fromMap(Map<String, dynamic> data, String documentId) {
-    return FeiraEvento(
+  factory Feira.fromMap(Map<String, dynamic> data, String documentId) {
+    return Feira(
       id: documentId,
       data: (data['data'] as Timestamp).toDate(),
       titulo: data['titulo'] ?? 'Feira Sem Título',
       anotacoes: data['anotacoes'] ?? '',
       status: statusFromString(data['status']),
+      mapaUrl: data['mapaUrl'],
       presencaExpositores:
           data['presencaExpositores'] != null
               ? Map<String, bool?>.from(data['presencaExpositores'])
@@ -67,6 +61,7 @@ class FeiraEvento {
       'titulo': titulo,
       'anotacoes': anotacoes,
       'status': statusToString,
+      'mapaUrl': mapaUrl,
       'presencaExpositores': presencaExpositores,
     };
   }

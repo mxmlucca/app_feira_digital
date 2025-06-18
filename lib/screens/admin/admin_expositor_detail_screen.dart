@@ -179,8 +179,8 @@ class _AdminExpositorDetailScreenState
                   icon: const Icon(Icons.close),
                   label: const Text('Reprovar'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                    foregroundColor: Theme.of(context).colorScheme.onError,
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
                   ),
                   onPressed:
                       _isProcessing ? null : () => _processarAprovacao(false),
@@ -191,6 +191,10 @@ class _AdminExpositorDetailScreenState
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.check),
                   label: const Text('Aprovar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green, // cor do botão
+                    foregroundColor: Colors.white, // cor do ícone e texto
+                  ),
                   onPressed:
                       _isProcessing ? null : () => _processarAprovacao(true),
                 ),

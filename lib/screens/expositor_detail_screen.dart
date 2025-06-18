@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/expositor.dart';
-import '../models/feira_evento.dart';
+import '../models/feira.dart';
 import '../services/firestore_service.dart';
 import 'expositor_form_screen.dart';
 import 'package:provider/provider.dart';
@@ -131,7 +131,7 @@ class _ExpositorDetailScreenState extends State<ExpositorDetailScreen> {
     );
   }
 
-  Widget _buildGridItem(FeiraEvento feira) {
+  Widget _buildGridItem(Feira feira) {
     final bool? presente = feira.presencaExpositores?[widget.expositor.id];
     Color corIcone = Colors.grey;
     IconData icone = Icons.schedule;
@@ -340,7 +340,7 @@ class _ExpositorDetailScreenState extends State<ExpositorDetailScreen> {
               color: corBotao,
               borderRadius: BorderRadius.circular(12.0),
             ),
-            child: StreamBuilder<List<FeiraEvento>>(
+            child: StreamBuilder<List<Feira>>(
               stream: _firestoreService.getFeiraEventos(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
