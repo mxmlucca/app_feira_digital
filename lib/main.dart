@@ -24,7 +24,7 @@ import 'screens/feiras/feira_list_screen.dart'; // Tela de agenda
 import 'screens/admin/admin_expositor_detail_screen.dart';
 import 'screens/feiras/feira_form_screen.dart'; // Tela de formulário de feira
 import 'screens/cadastro/cadastro_expositor_screen.dart';
-import 'screens/cadastro/aguardando_aprovacao_screen.dart';
+import 'screens/cadastro/cadastro_aprovacao_screen.dart';
 import 'screens/cadastro/cadastro_reprovado_screen.dart';
 import 'screens/mapa/mapa_viewer_screen.dart';
 import 'screens/admin/admin_aprovacao_screen.dart'; // Tela de aprovação de expositores para administradores

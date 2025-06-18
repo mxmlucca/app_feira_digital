@@ -1,5 +1,3 @@
-// lib/screens/agenda_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/feira.dart';
@@ -7,15 +5,15 @@ import '../../services/firestore_service.dart';
 import 'feira_form_screen.dart';
 import 'feira_detail_screen.dart';
 
-class AgendaScreen extends StatefulWidget {
-  const AgendaScreen({super.key});
+class FeiraListScreen extends StatefulWidget {
+  const FeiraListScreen({super.key});
   static const String routeName = '/feiras-list';
 
   @override
-  State<AgendaScreen> createState() => _AgendaScreenState();
+  State<FeiraListScreen> createState() => _FeiraListScreenState();
 }
 
-class _AgendaScreenState extends State<AgendaScreen> {
+class _FeiraListScreenState extends State<FeiraListScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   late int _anoSelecionado;
 

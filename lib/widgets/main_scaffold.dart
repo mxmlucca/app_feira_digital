@@ -44,7 +44,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         const HomeScreen(), // Aba 0: Home/Dashboard do Admin
         const ExpositorListScreen(), // Aba 1: Lista de Expositores
         const MapaScreen(), // Aba 2: Mapa
-        const AgendaScreen(), // Aba 3: Agenda de Feiras
+        const FeiraListScreen(), // Aba 3: Agenda de Feiras
       ];
       navItems = [
         const BottomNavigationBarItem(
