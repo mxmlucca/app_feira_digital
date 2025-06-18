@@ -25,7 +25,7 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
   late TextEditingController _tituloController;
   late TextEditingController _anotacoesController;
   DateTime? _dataSelecionada;
-  StatusFeira _statusSelecionado = StatusFeira.atual;
+  StatusFeira _statusSelecionado = StatusFeira.agendada;
   File? _mapaSelecionado;
   String? _mapaUrlExistente;
   bool _isSaving = false;
@@ -41,7 +41,7 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
       text: widget.feiraEvento?.anotacoes ?? '',
     );
     _dataSelecionada = widget.feiraEvento?.data;
-    _statusSelecionado = widget.feiraEvento?.status ?? StatusFeira.atual;
+    _statusSelecionado = widget.feiraEvento?.status ?? StatusFeira.agendada;
     _mapaUrlExistente = widget.feiraEvento?.mapaUrl;
   }
 
@@ -72,7 +72,6 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
               onPrimary: colorScheme.onPrimary,
               onSurface: colorScheme.onSurface,
               surface: colorScheme.secondary,
-              background: colorScheme.secondary,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(foregroundColor: colorScheme.primary),
@@ -161,12 +160,6 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  // Helper para converter o enum para uma string legível
-  String _statusParaStringLegivel(StatusFeira status) {
-    return status.toString().split('.').last[0].toUpperCase() +
-        status.toString().split('.').last.substring(1);
   }
 
   @override
@@ -284,33 +277,24 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
 
               const SizedBox(height: 20),
 
-              // Seletor de Status (Atualizado)
-              DropdownButtonFormField<StatusFeira>(
-                decoration: const InputDecoration(
-                  labelText: 'Status da Feira',
-                  prefixIcon: Icon(Icons.flag_outlined),
-                ),
-                value: _statusSelecionado,
-                items:
-                    StatusFeira.values.map((status) {
-                      return DropdownMenuItem<StatusFeira>(
-                        value: status,
-                        child: Text(_statusParaStringLegivel(status)),
-                      );
-                    }).toList(),
-                onChanged:
-                    (novoValor) =>
-                        setState(() => _statusSelecionado = novoValor!),
-              ),
-
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _isSaving ? null : _salvarFeira,
-                child:
-                    _isSaving
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Salvar Feira'),
-              ),
+              // // Seletor de Status (Atualizado)
+              // DropdownButtonFormField<StatusFeira>(
+              //   decoration: const InputDecoration(
+              //     labelText: 'Status da Feira',
+              //     prefixIcon: Icon(Icons.flag_outlined),
+              //   ),
+              //   value: _statusSelecionado,
+              //   items:
+              //       StatusFeira.values.map((status) {
+              //         return DropdownMenuItem<StatusFeira>(
+              //           value: status,
+              //           child: Text(_statusParaStringLegivel(status)),
+              //         );
+              //       }).toList(),
+              //   onChanged:
+              //       (novoValor) =>
+              //           setState(() => _statusSelecionado = novoValor!),
+              // ),
 
               // Botão Salvar
               ElevatedButton(

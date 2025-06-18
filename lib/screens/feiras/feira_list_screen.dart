@@ -1,9 +1,12 @@
+import 'dart:async'; // Importe o 'async' para StreamSubscription
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/feira.dart';
 import '../../services/firestore_service.dart';
 import 'feira_form_screen.dart';
 import 'feira_detail_screen.dart';
+import 'package:provider/provider.dart';
+import '../../services/user_provider.dart';
 
 class FeiraListScreen extends StatefulWidget {
   const FeiraListScreen({super.key});
@@ -17,185 +20,246 @@ class _FeiraListScreenState extends State<FeiraListScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   late int _anoSelecionado;
 
+  // --- NOSSAS NOVAS VARIÁVEIS DE ESTADO ---
+  bool _isLoading = true;
+  List<Feira> _todasAsFeiras = [];
+  Feira? _feiraAtiva;
+  StreamSubscription? _feirasSubscription;
+  StreamSubscription? _feiraAtivaSubscription;
+  // -----------------------------------------
+
   @override
   void initState() {
     super.initState();
     _anoSelecionado = DateTime.now().year;
+
+    // Inicia a escuta dos streams
+    _feiraAtivaSubscription = _firestoreService.getFeiraAtualStream().listen((
+      feira,
+    ) {
+      if (mounted) {
+        setState(() {
+          _feiraAtiva = feira;
+        });
+      }
+    });
+
+    _feirasSubscription = _firestoreService.getFeiraEventos().listen((
+      listaFeiras,
+    ) {
+      if (mounted) {
+        setState(() {
+          _todasAsFeiras = listaFeiras;
+          _isLoading = false;
+        });
+      }
+    });
   }
 
-  void _navigateToDetail(Feira evento) {
+  @override
+  void dispose() {
+    // É MUITO IMPORTANTE cancelar as inscrições para evitar vazamentos de memória
+    _feirasSubscription?.cancel();
+    _feiraAtivaSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _navigateToDetail(BuildContext context, Feira feira) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FeiraDetailScreen(feiraEvento: evento),
+        builder: (context) => FeiraDetailScreen(feiraEvento: feira),
+        settings: RouteSettings(
+          name: FeiraDetailScreen.routeName,
+          arguments: feira,
+        ),
       ),
-    ).then(
-      (_) => setState(() {}),
-    ); // Força a reconstrução para atualizar o estado
+    );
   }
 
-  // Widget para o card da feira ativa
-  Widget _buildFeiraAtivaCard(Feira feiraAtiva, BuildContext context) {
+  // Os métodos _buildCardFeiraAtiva e _buildCardHistorico continuam os mesmos
+  Widget _buildCardFeiraAtiva(Feira feiraAtiva) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'ATUAL',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            letterSpacing: 1.5,
+          ),
         ),
         const SizedBox(height: 8),
         Card(
-          elevation: 4,
-          color: Colors.white,
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 16,
-              horizontal: 16,
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
             ),
-            title: Text(
-              feiraAtiva.titulo,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.black,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            onTap: () => _navigateToDetail(context, feiraAtiva),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: 24.0,
+                horizontal: 16.0,
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    feiraAtiva.titulo.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    DateFormat(
+                      'dd \'de\' MMMM',
+                      'pt_BR',
+                    ).format(feiraAtiva.data),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
+                ],
               ),
             ),
-            subtitle: Text(
-              DateFormat('dd \'de\' MMMM', 'pt_BR').format(feiraAtiva.data),
-              style: const TextStyle(color: Colors.black54),
-            ),
-            onTap: () => _navigateToDetail(feiraAtiva),
           ),
         ),
       ],
     );
   }
 
-  // Widget para os itens da lista de feiras finalizadas
-  Widget _buildFeiraFinalizadaCard(Feira feira, BuildContext context) {
+  Widget _buildCardHistorico(Feira feira) {
+    final bool isFinalizada = feira.status == StatusFeira.finalizada;
+    final iconData =
+        isFinalizada ? Icons.check_circle_outline : Icons.schedule_outlined;
+    final String statusText = isFinalizada ? 'Finalizada' : 'Agendada';
+
     return Card(
       elevation: 2,
-      color: Colors.white,
       child: ListTile(
-        title: Text(feira.titulo, style: const TextStyle(color: Colors.black)),
-        trailing: Text(
-          DateFormat('dd/MM/yyyy').format(feira.data),
-          style: const TextStyle(color: Colors.black54),
+        leading: Icon(
+          iconData,
+          color:
+              isFinalizada
+                  ? Colors.green
+                  : Theme.of(context).colorScheme.primary,
         ),
-        onTap: () => _navigateToDetail(feira),
+        title: Text(feira.titulo),
+        subtitle: Text(statusText),
+        trailing: Text(DateFormat('dd/MM/yy').format(feira.data)),
+        onTap: () => _navigateToDetail(context, feira),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isAdmin =
+        Provider.of<UserProvider>(context).usuario?.papel == 'admin';
+
+    // A lógica de filtragem agora acontece aqui, diretamente nas listas em memória
+    final List<Feira> outrasFeiras =
+        _todasAsFeiras.where((f) => f.id != _feiraAtiva?.id).toList();
+    final List<Feira> feirasFiltradasPorAno =
+        outrasFeiras.where((f) => f.data.year == _anoSelecionado).toList();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Eventos')),
-      body: StreamBuilder<List<Feira>>(
-        stream: _firestoreService.getFeiraEventos(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Erro: ${snapshot.error}'));
-          }
+      backgroundColor: Theme.of(context).colorScheme.secondary,
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  if (_feiraAtiva != null) _buildCardFeiraAtiva(_feiraAtiva!),
 
-          // Separa a feira ativa das outras
-          Feira? feiraAtiva;
-          List<Feira> todasAsFeiras = snapshot.data ?? [];
-          List<Feira> feirasFinalizadas = [];
-
-          if (todasAsFeiras.isNotEmpty) {
-            try {
-              feiraAtiva = todasAsFeiras.firstWhere(
-                (f) => f.status == StatusFeira.atual,
-              );
-            } catch (e) {
-              feiraAtiva = null; // Nenhuma feira ativa encontrada
-            }
-            feirasFinalizadas =
-                todasAsFeiras
-                    .where((f) => f.status == StatusFeira.finalizada)
-                    .toList();
-          }
-
-          final feirasFiltradasPorAno =
-              feirasFinalizadas
-                  .where((f) => f.data.year == _anoSelecionado)
-                  .toList();
-
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // Mostra o card da feira ativa
-                if (feiraAtiva != null)
-                  _buildFeiraAtivaCard(feiraAtiva, context),
-
-                // Seletor de Ano
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => setState(() => _anoSelecionado--),
-                      ),
-                      Text(
-                        _anoSelecionado.toString(),
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_forward),
-                        onPressed: () => setState(() => _anoSelecionado++),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Lista de Feiras Finalizadas
-                Expanded(
-                  child:
-                      feirasFiltradasPorAno.isEmpty
-                          ? const Center(
-                            child: Text(
-                              'Nenhuma feira finalizada encontrada para este ano.',
-                            ),
-                          )
-                          : ListView.builder(
-                            itemCount: feirasFiltradasPorAno.length,
-                            itemBuilder: (context, index) {
-                              final evento = feirasFiltradasPorAno[index];
-                              return _buildFeiraFinalizadaCard(evento, context);
-                            },
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios),
+                          onPressed: () => setState(() => _anoSelecionado--),
+                        ),
+                        Text(
+                          _anoSelecionado.toString(),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
                           ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-      // O botão só aparece se NÃO houver feira ativa
-      floatingActionButton: StreamBuilder<Feira?>(
-        stream:
-            _firestoreService.getFeiraAtualStream(), // Um novo método de stream
-        builder: (context, snapshot) {
-          final bool temFeiraAtiva = snapshot.hasData && snapshot.data != null;
-          return temFeiraAtiva
-              ? const SizedBox.shrink() // Não mostra nada se tiver feira ativa
-              : FloatingActionButton.extended(
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.arrow_forward_ios),
+                          onPressed: () => setState(() => _anoSelecionado++),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if (feirasFiltradasPorAno.isEmpty && outrasFeiras.isNotEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text(
+                          'Nenhum outro evento para este ano.',
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    )
+                  else if (outrasFeiras.isEmpty && _feiraAtiva == null)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text(
+                          'Nenhum evento cadastrado.',
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    )
+                  else
+                    // O ListView.builder é mais eficiente para listas longas
+                    ListView.builder(
+                      shrinkWrap: true, // Importante dentro de outro ListView
+                      physics:
+                          const NeverScrollableScrollPhysics(), // Desativa o scroll deste
+                      itemCount: feirasFiltradasPorAno.length,
+                      itemBuilder: (context, index) {
+                        return _buildCardHistorico(
+                          feirasFiltradasPorAno[index],
+                        );
+                      },
+                    ),
+                ],
+              ),
+      floatingActionButton:
+          isAdmin
+              ? FloatingActionButton.extended(
+                onPressed:
+                    () => Navigator.pushNamed(
+                      context,
+                      FeiraFormScreen.routeNameAdd,
+                    ),
                 label: const Text('Evento'),
                 icon: const Icon(Icons.add),
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    FeiraFormScreen.routeNameAdd,
-                  ).then((_) => setState(() {}));
-                },
-              );
-        },
-      ),
+              )
+              : null,
     );
   }
 }

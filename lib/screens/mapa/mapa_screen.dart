@@ -18,13 +18,6 @@ class MapaScreen extends StatefulWidget {
 
 class _MapaScreenState extends State<MapaScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  late Future<Feira?> _feiraAtualFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _feiraAtualFuture = _firestoreService.getFeiraAtual();
-  }
 
   Widget _buildInfoCard(
     BuildContext context, {
@@ -95,8 +88,8 @@ class _MapaScreenState extends State<MapaScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Feira Atual')),
-      body: FutureBuilder<Feira?>(
-        future: _feiraAtualFuture,
+      body: StreamBuilder<Feira?>(
+        stream: _firestoreService.getFeiraAtualStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

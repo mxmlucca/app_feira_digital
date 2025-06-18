@@ -7,7 +7,7 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   late final CollectionReference<Expositor> _expositoresRef;
-  late final CollectionReference<Feira> _feiraEventosRef;
+  late final CollectionReference<Feira> _feirasRef;
 
   FirestoreService() {
     _expositoresRef = _db
@@ -19,8 +19,8 @@ class FirestoreService {
           toFirestore: (expositor, _) => expositor.toMap(),
         );
 
-    _feiraEventosRef = _db
-        .collection('feira_eventos')
+    _feirasRef = _db
+        .collection('feiras')
         .withConverter<Feira>(
           fromFirestore:
               (snapshots, _) => Feira.fromMap(snapshots.data()!, snapshots.id),
@@ -28,11 +28,9 @@ class FirestoreService {
         );
   }
 
-  // Expositor
+  /// Funções de Expositores
 
-  /// Cria ou atualiza os dados de um Expositor com um ID específico.
   Future<void> setExpositor(Expositor expositor) async {
-    // O ID do expositor DEVE ser o UID do Firebase Auth.
     if (expositor.id == null) {
       throw Exception(
         'ID do expositor (UID) não pode ser nulo ao usar setExpositor.',
@@ -104,11 +102,11 @@ class FirestoreService {
     }
   }
 
-  // Feira
+  /// Funções de Feiras
 
   Future<void> adicionarFeiraEvento(Feira evento) async {
     try {
-      await _feiraEventosRef.add(evento);
+      await _feirasRef.add(evento);
       print('Evento da feira adicionado com sucesso!');
     } catch (e) {
       print('Erro ao adicionar evento da feira: $e');
@@ -116,13 +114,12 @@ class FirestoreService {
     }
   }
 
-  // Adicione este método dentro da classe FirestoreService
   String getNewFeiraId() {
-    return _feiraEventosRef.doc().id;
+    return _feirasRef.doc().id;
   }
 
   Stream<List<Feira>> getFeiraEventos() {
-    return _feiraEventosRef.orderBy('data', descending: true).snapshots().map((
+    return _feirasRef.orderBy('data', descending: true).snapshots().map((
       snapshot,
     ) {
       return snapshot.docs.map((doc) => doc.data()).toList();
@@ -131,7 +128,7 @@ class FirestoreService {
 
   Future<Feira?> getFeiraEventoPorId(String id) async {
     try {
-      final docSnapshot = await _feiraEventosRef.doc(id).get();
+      final docSnapshot = await _feirasRef.doc(id).get();
       if (docSnapshot.exists) {
         return docSnapshot.data();
       }
@@ -147,7 +144,7 @@ class FirestoreService {
       return;
     }
     try {
-      await _feiraEventosRef.doc(evento.id).update(evento.toMap());
+      await _feirasRef.doc(evento.id).update(evento.toMap());
       print('Evento da feira atualizado com sucesso!');
     } catch (e) {
       print('Erro ao atualizar evento da feira: $e');
@@ -156,20 +153,18 @@ class FirestoreService {
   }
 
   Future<void> removerFeiraEvento(String id) async {
-    try {
-      await _feiraEventosRef.doc(id).delete();
-      print('Evento da feira removido com sucesso!');
-    } catch (e) {
-      print('Erro ao remover evento da feira: $e');
-      rethrow;
+    final feiraAtiva = await getFeiraAtual();
+    if (feiraAtiva?.id == id) {
+      // Se a feira a ser removida é a ativa, limpa a configuração
+      await _db.collection('configuracoes').doc('feira_ativa').set({
+        'idFeiraAtual': null,
+      });
     }
+    await _feirasRef.doc(id).delete();
   }
-
-  // Adicione este método dentro da classe FirestoreService
 
   Future<Feira?> getFeiraAtual() async {
     try {
-      // 1. Lê o documento de controlo para saber o ID da feira ativa
       final docConfig =
           await _db.collection('configuracoes').doc('feira_ativa').get();
 
@@ -185,7 +180,6 @@ class FirestoreService {
         return null;
       }
 
-      // 2. Busca os dados da feira usando o ID obtido
       return await getFeiraEventoPorId(idFeira);
     } catch (e) {
       print('Erro ao buscar feira atual: $e');
@@ -193,7 +187,6 @@ class FirestoreService {
     }
   }
 
-  // ADICIONE ESTE NOVO MÉTODO para o admin definir a feira ativa
   Future<void> setFeiraAtiva(String novoIdFeira) async {
     try {
       await _db.collection('configuracoes').doc('feira_ativa').set({
@@ -210,18 +203,21 @@ class FirestoreService {
       // Usamos um WriteBatch para garantir que ambas as operações aconteçam ou nenhuma aconteça.
       final batch = _db.batch();
 
-      // 1. Atualiza o status da feira específica para 'finalizada'
-      final feiraRef = _feiraEventosRef.doc(idFeiraFinalizada);
+      // 1. Pega a referência do documento da feira específica
+      final feiraRef = _db.collection('feiras').doc(idFeiraFinalizada);
+      // Adiciona a operação de atualização do status no batch
       batch.update(feiraRef, {'status': 'finalizada'});
 
-      // 2. Limpa o campo no documento de configuração
+      // 2. Pega a referência do documento de configuração
       final configRef = _db.collection('configuracoes').doc('feira_ativa');
+      // Adiciona a operação para limpar o campo no batch
       batch.update(configRef, {'idFeiraAtual': null});
 
       // Executa as duas operações atomicamente
       await batch.commit();
+      print('Feira finalizada e configuração limpa com sucesso!');
     } catch (e) {
-      print("Erro ao finalizar a feira: $e");
+      print("Erro ao finalizar a feira de forma atômica: $e");
       rethrow;
     }
   }
