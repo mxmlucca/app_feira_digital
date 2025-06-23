@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
 import '../models/expositor.dart';
 import '../models/feira.dart';
 import '../models/usuario.dart';
@@ -223,16 +224,28 @@ class FirestoreService {
   }
 
   Stream<Feira?> getFeiraAtualStream() {
-    return _db
-        .collection('configuracoes')
-        .doc('feira_ativa')
-        .snapshots()
-        .asyncMap((doc) async {
-          if (!doc.exists || doc.data() == null) return null;
-          final idFeira = doc.data()!['idFeiraAtual'] as String?;
-          if (idFeira == null || idFeira.isEmpty) return null;
-          return await getFeiraEventoPorId(idFeira);
+    // 1. Escuta as mudanças no documento de configuração
+    return _db.collection('configuracoes').doc('feira_ativa').snapshots()
+    // 2. Usa switchMap para transformar o stream de configuração em um stream de Feira
+    .switchMap((configDoc) {
+      if (!configDoc.exists || configDoc.data() == null) {
+        // Se não há configuração, retorna um stream que emite apenas null.
+        return Stream.value(null);
+      }
+
+      final idFeira = configDoc.data()!['idFeiraAtual'] as String?;
+
+      if (idFeira == null || idFeira.isEmpty) {
+        // Se o ID for nulo ou vazio, retorna um stream que emite apenas null.
+        return Stream.value(null);
+      } else {
+        // Se houver um ID, retorna um NOVO STREAM que observa
+        // em tempo real (.snapshots()) o documento da feira específica.
+        return _feirasRef.doc(idFeira).snapshots().map((feiraDoc) {
+          return feiraDoc.exists ? feiraDoc.data() : null;
         });
+      }
+    });
   }
 
   // --- Operações para Usuários ---

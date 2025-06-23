@@ -150,7 +150,7 @@ class _FeiraFormScreenState extends State<FeiraFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Feira salva com sucesso!')),
         );
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted)

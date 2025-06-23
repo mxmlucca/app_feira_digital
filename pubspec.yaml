@@ -50,6 +50,8 @@ dependencies:
   firebase_storage: ^12.1.0 # Para fazer upload de ficheiros para o Firebase
 
   firebase_app_check: ^0.3.0
+
+  rxdart: ^0.28.0
   
 dev_dependencies:
   flutter_test:

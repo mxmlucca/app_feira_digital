@@ -25,9 +25,12 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
   String? _idFeiraAtiva;
   bool _isLoading = true;
 
+  late Feira _feiraAtual;
+
   @override
   void initState() {
     super.initState();
+    _feiraAtual = widget.feiraEvento;
     _carregarFeiraAtiva();
   }
 
@@ -136,6 +139,32 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
     }
   }
 
+  Future<void> _recarregarDadosDaFeira() async {
+    final feiraAtualizada = await _firestoreService.getFeiraEventoPorId(
+      _feiraAtual.id!,
+    );
+    if (feiraAtualizada != null && mounted) {
+      setState(() {
+        _feiraAtual = feiraAtualizada;
+      });
+    }
+  }
+
+  Future<void> _navegarParaEdicao() async {
+    // `await` espera a tela de edição fechar
+    final foiModificado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FeiraFormScreen(feiraEvento: _feiraAtual),
+      ),
+    );
+
+    // Se a tela de edição retornou 'true', recarregue os dados
+    if (foiModificado == true) {
+      _recarregarDadosDaFeira();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -152,12 +181,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Editar Feira',
-              onPressed:
-                  () => Navigator.pushNamed(
-                    context,
-                    FeiraFormScreen.routeNameEdit,
-                    arguments: widget.feiraEvento,
-                  ),
+              onPressed: _navegarParaEdicao,
             ),
           if (isAdmin)
             IconButton(
@@ -228,23 +252,24 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
                     const SizedBox(height: 24),
                     Text('Mapa da Feira', style: theme.textTheme.titleLarge),
                     const SizedBox(height: 12),
-                    InkWell(
-                      onTap:
-                          () => Navigator.pushNamed(
-                            context,
-                            MapaViewerScreen.routeName,
-                            arguments: widget.feiraEvento.mapaUrl!,
-                          ),
-                      child: ClipRRect(
+                    Container(
+                      height:
+                          300, // Damos um pouco mais de altura para facilitar a interação
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          widget.feiraEvento.mapaUrl!,
-                          height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder:
-                              (context, error, stackTrace) =>
-                                  const Icon(Icons.error),
+                      ),
+                      child: ClipRRect(
+                        // ClipRRect para manter as bordas arredondadas
+                        borderRadius: BorderRadius.circular(11),
+                        child: InteractiveViewer(
+                          panEnabled: true,
+                          minScale: 0.5,
+                          maxScale: 4.0,
+                          child: Image.network(
+                            _feiraAtual.mapaUrl!,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
@@ -265,7 +290,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
                   ],
 
                   if (isAdmin) ...[
-                    const Divider(height: 40),
+                    // const Divider(height: 40),
 
                     // --- LÓGICA DE VISIBILIDADE DOS BOTÕES ---
 
