@@ -22,6 +22,25 @@ class FeiraDetailScreen extends StatefulWidget {
 class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
   final FirestoreService _firestoreService = FirestoreService();
 
+  String? _idFeiraAtiva;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarFeiraAtiva();
+  }
+
+  Future<void> _carregarFeiraAtiva() async {
+    final feiraAtiva = await _firestoreService.getFeiraAtual();
+    if (mounted) {
+      setState(() {
+        _idFeiraAtiva = feiraAtiva?.id;
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _confirmarERemoverFeira() async {
     final bool confirmar =
         await showDialog(
@@ -68,11 +87,62 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
     }
   }
 
+  Future<void> _tornarFeiraAtiva() async {
+    bool prosseguir = true;
+    if (_idFeiraAtiva != null && _idFeiraAtiva != widget.feiraEvento.id) {
+      prosseguir =
+          await showDialog<bool>(
+            context: context,
+            builder:
+                (ctx) => AlertDialog(
+                  title: const Text('Substituir Feira Ativa?'),
+                  content: const Text(
+                    'Já existe uma feira ativa. Deseja tornar esta a nova feira ativa? A anterior será marcada como agendada.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancelar'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Substituir'),
+                    ),
+                  ],
+                ),
+          ) ??
+          false;
+    }
+
+    if (prosseguir && mounted) {
+      await _firestoreService.setFeiraAtiva(widget.feiraEvento.id!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Feira definida como ativa!')),
+      );
+      Navigator.of(context).pop();
+    }
+  }
+
+  // --- MÉTODO PARA O BOTÃO DE FINALIZAR ---
+  Future<void> _finalizarFeira() async {
+    // A lógica complexa não é mais necessária aqui, pois o botão só aparece
+    // se esta for a feira ativa.
+    await _firestoreService.finalizarFeiraAtiva(widget.feiraEvento.id!);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Feira marcada como finalizada.')),
+      );
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final bool isAdmin = userProvider.usuario?.papel == 'admin';
     final theme = Theme.of(context);
+
+    final bool isFeiraAtiva = widget.feiraEvento.id == _idFeiraAtiva;
 
     return Scaffold(
       appBar: AppBar(
@@ -97,159 +167,139 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          // Card Principal com Título e Data
-          Card(
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView(
+                padding: const EdgeInsets.all(16.0),
                 children: [
-                  Text(
-                    widget.feiraEvento.titulo,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: theme.colorScheme.primary,
+                  // Card Principal com Título e Data
+                  Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.feiraEvento.titulo,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: Colors.grey.shade600,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                DateFormat(
+                                  'EEEE, dd \'de\' MMMM \'de\' yyyy',
+                                  'pt_BR',
+                                ).format(widget.feiraEvento.data),
+                                style: theme.textTheme.titleMedium,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        color: Colors.grey.shade600,
-                        size: 18,
+
+                  if (widget.feiraEvento.anotacoes.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Descrição/Anotações',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.feiraEvento.anotacoes,
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                  ],
+
+                  if (widget.feiraEvento.mapaUrl != null &&
+                      widget.feiraEvento.mapaUrl!.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text('Mapa da Feira', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap:
+                          () => Navigator.pushNamed(
+                            context,
+                            MapaViewerScreen.routeName,
+                            arguments: widget.feiraEvento.mapaUrl!,
+                          ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          widget.feiraEvento.mapaUrl!,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (context, error, stackTrace) =>
+                                  const Icon(Icons.error),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        DateFormat(
-                          'EEEE, dd \'de\' MMMM \'de\' yyyy',
-                          'pt_BR',
-                        ).format(widget.feiraEvento.data),
-                        style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      icon: const Icon(Icons.download_outlined),
+                      label: const Text('Baixar Imagem do Mapa'),
+                      onPressed: () async {
+                        final url = Uri.parse(widget.feiraEvento.mapaUrl!);
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(
+                            url,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                    ),
+                  ],
+
+                  if (isAdmin) ...[
+                    const Divider(height: 40),
+
+                    // --- LÓGICA DE VISIBILIDADE DOS BOTÕES ---
+
+                    // 1. Botão para ATIVAR: só aparece se a feira for 'agendada'
+                    if (widget.feiraEvento.status == StatusFeira.agendada &&
+                        !isFeiraAtiva)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          label: const Text('Tornar Esta Feira Ativa'),
+                          onPressed: _tornarFeiraAtiva,
+                        ),
                       ),
-                    ],
+
+                    // 2. Botão para FINALIZAR: só aparece se a feira for a ATIVA
+                    if (isFeiraAtiva)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          label: const Text('Marcar como Finalizada'),
+                          onPressed: _finalizarFeira,
+                        ),
+                      ),
+                  ],
+
+                  // ESPAÇO RESERVADO PARA LISTA DE PRESENÇA
+                  const Divider(height: 40),
+                  // TODO: Futuramente, a lista de presença será inserida aqui.
+                  // Por enquanto, pode ser um Text.
+                  const Center(
+                    child: Text('Funcionalidade de presença em breve...'),
                   ),
                 ],
               ),
-            ),
-          ),
-
-          if (widget.feiraEvento.anotacoes.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Text('Descrição/Anotações', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(
-              widget.feiraEvento.anotacoes,
-              style: theme.textTheme.bodyLarge,
-            ),
-          ],
-
-          if (widget.feiraEvento.mapaUrl != null &&
-              widget.feiraEvento.mapaUrl!.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            Text('Mapa da Feira', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap:
-                  () => Navigator.pushNamed(
-                    context,
-                    MapaViewerScreen.routeName,
-                    arguments: widget.feiraEvento.mapaUrl!,
-                  ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  widget.feiraEvento.mapaUrl!,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder:
-                      (context, error, stackTrace) => const Icon(Icons.error),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              icon: const Icon(Icons.download_outlined),
-              label: const Text('Baixar Imagem do Mapa'),
-              onPressed: () async {
-                final url = Uri.parse(widget.feiraEvento.mapaUrl!);
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                }
-              },
-            ),
-          ],
-
-          if (isAdmin) ...[
-            const Divider(height: 40),
-            // Lógica de Admin (Ativar/Finalizar Feira)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Marcar como Finalizada'),
-
-                // ----- ALTERAÇÃO AQUI -----
-                onPressed: () async {
-                  // Primeiro, verificamos se a feira que estamos tentando finalizar
-                  // é de fato a feira ativa no momento.
-                  final feiraAtiva = await _firestoreService.getFeiraAtual();
-                  if (feiraAtiva?.id != widget.feiraEvento.id) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Esta não é a feira ativa. Apenas o status dela será alterado para "finalizada".',
-                          ),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                    }
-                    // Se não for a ativa, apenas mudamos o status dela
-                    final feiraAtualizada = Feira(
-                      id: widget.feiraEvento.id,
-                      data: widget.feiraEvento.data,
-                      titulo: widget.feiraEvento.titulo,
-                      status: StatusFeira.finalizada,
-                      anotacoes: widget.feiraEvento.anotacoes,
-                      mapaUrl: widget.feiraEvento.mapaUrl,
-                      presencaExpositores:
-                          widget.feiraEvento.presencaExpositores,
-                    );
-                    await _firestoreService.atualizarFeiraEvento(
-                      feiraAtualizada,
-                    );
-                  } else {
-                    // Se for a feira ativa, usamos nosso novo método
-                    await _firestoreService.finalizarFeiraAtiva(
-                      widget.feiraEvento.id!,
-                    );
-                  }
-
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Feira marcada como finalizada.'),
-                      ),
-                    );
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-            ),
-          ],
-
-          // ESPAÇO RESERVADO PARA LISTA DE PRESENÇA
-          const Divider(height: 40),
-          // TODO: Futuramente, a lista de presença será inserida aqui.
-          // Por enquanto, pode ser um Text.
-          const Center(child: Text('Funcionalidade de presença em breve...')),
-        ],
-      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 /// main.dart
 
 /// Importação de pacotes necessários
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart'; // Flutter framework
 import 'package:firebase_core/firebase_core.dart'; // Firebase core para inicialização
@@ -39,15 +40,26 @@ import 'widgets/main_scaffold.dart'; // Scaffold principal com BottomNavigationB
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR', null);
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  await FirebaseAppCheck.instance.activate(
-    // Para ambiente de desenvolvimento web, use reCAPTCHA v3.
-    // Para mobile, ele usará o Play Integrity (Android) ou Device Check (iOS).
-    webProvider: ReCaptchaV3Provider(
-      'recaptcha-v3-site-key',
-    ), // Você obterá esta chave no console do Google Cloud
-  );
+    // ----- ALTERAÇÃO PARA DEPURAR NO ANDROID -----
+    await FirebaseAppCheck.instance.activate(
+      // No Android, use o provedor de depuração.
+      // Na Web, continue usando o reCAPTCHA.
+      androidProvider: AndroidProvider.debug,
+      webProvider: ReCaptchaV3Provider(
+        '6LdnsmorAAAAALGjF_-ofHO9gmXG2GtbARvd0tFH',
+      ),
+    );
+    // ---------------------------------------------
+
+    print("Firebase e AppCheck inicializados.");
+  } else {
+    print("Firebase já inicializado.");
+  }
 
   runApp(
     // Envolve a aplicação com o provider
