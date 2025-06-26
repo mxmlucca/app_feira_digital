@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/feira.dart';
+import '../../models/expositor.dart';
+import '../../models/registro_presenca.dart';
 import '../../services/firestore_service.dart';
 import 'package:provider/provider.dart';
 import '../../services/user_provider.dart';
@@ -19,7 +21,10 @@ class FeiraDetailScreen extends StatefulWidget {
   State<FeiraDetailScreen> createState() => _FeiraDetailScreenState();
 }
 
-class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
+class _FeiraDetailScreenState extends State<FeiraDetailScreen>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+
   final FirestoreService _firestoreService = FirestoreService();
 
   String? _idFeiraAtiva;
@@ -27,11 +32,87 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
 
   late Feira _feiraAtual;
 
+  List<Expositor> _todosExpositores = [];
+  List<Expositor> _expositoresFiltrados = [];
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+
+    _tabController = TabController(length: 3, vsync: this);
     _feiraAtual = widget.feiraEvento;
-    _carregarFeiraAtiva();
+    _carregarDadosIniciais();
+
+    _searchController.addListener(() {
+      _filtrarExpositores(_searchController.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    // 4. Lembre-se de dar dispose no controller
+    _tabController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _carregarDadosIniciais() async {
+    setState(() => _isLoading = true);
+    final feiraAtiva = await _firestoreService.getFeiraAtual();
+    final expositores =
+        await _firestoreService
+            .getExpositores()
+            .first; // Pega a primeira emissão da lista
+
+    if (mounted) {
+      setState(() {
+        _idFeiraAtiva = feiraAtiva?.id;
+        _todosExpositores =
+            expositores.where((e) => e.status == 'ativo').toList();
+        _expositoresFiltrados = _todosExpositores;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _filtrarExpositores(String query) {
+    if (query.isEmpty) {
+      _expositoresFiltrados = _todosExpositores;
+    } else {
+      _expositoresFiltrados =
+          _todosExpositores.where((expositor) {
+            return expositor.nome.toLowerCase().contains(query.toLowerCase());
+          }).toList();
+    }
+    setState(() {});
+  }
+
+  Future<void> _confirmarPresenca(
+    String expositorId,
+    StatusPresenca status,
+  ) async {
+    await _firestoreService.confirmarPresencaFinal(
+      feiraId: _feiraAtual.id!,
+      expositorId: expositorId,
+      statusFinal: status,
+    );
+    // Atualiza o estado local para refletir a mudança imediatamente
+    setState(() {
+      _feiraAtual.presencaExpositores[expositorId] = RegistroPresenca(
+        nomeExpositor:
+            _feiraAtual.presencaExpositores[expositorId]?.nomeExpositor ?? '',
+        categoria:
+            _feiraAtual.presencaExpositores[expositorId]?.categoria ?? '',
+        presencaFinal: status,
+        // Mantém outros dados se existirem
+        interesse:
+            _feiraAtual.presencaExpositores[expositorId]?.interesse ??
+            StatusInteresse.pendente,
+        checkinGps:
+            _feiraAtual.presencaExpositores[expositorId]?.checkinGps ?? false,
+      );
+    });
   }
 
   Future<void> _carregarFeiraAtiva() async {
@@ -190,141 +271,248 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen> {
               onPressed: _confirmarERemoverFeira,
             ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.info_outline), text: 'Visão Geral'),
+            Tab(icon: Icon(Icons.playlist_add_check), text: 'Presenças'),
+            Tab(icon: Icon(Icons.bar_chart), text: 'Estatísticas'),
+          ],
+        ),
       ),
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : ListView(
-                padding: const EdgeInsets.all(16.0),
+              : TabBarView(
+                controller: _tabController,
                 children: [
-                  // Card Principal com Título e Data
-                  Card(
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.feiraEvento.titulo,
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today,
-                                color: Colors.grey.shade600,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                DateFormat(
-                                  'EEEE, dd \'de\' MMMM \'de\' yyyy',
-                                  'pt_BR',
-                                ).format(widget.feiraEvento.data),
-                                style: theme.textTheme.titleMedium,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  if (widget.feiraEvento.anotacoes.isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      'Descrição/Anotações',
-                      style: theme.textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.feiraEvento.anotacoes,
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                  ],
-
-                  if (widget.feiraEvento.mapaUrl != null &&
-                      widget.feiraEvento.mapaUrl!.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Text('Mapa da Feira', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 12),
-                    Container(
-                      height:
-                          300, // Damos um pouco mais de altura para facilitar a interação
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ClipRRect(
-                        // ClipRRect para manter as bordas arredondadas
-                        borderRadius: BorderRadius.circular(11),
-                        child: InteractiveViewer(
-                          panEnabled: true,
-                          minScale: 0.5,
-                          maxScale: 4.0,
-                          child: Image.network(
-                            _feiraAtual.mapaUrl!,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton.icon(
-                      icon: const Icon(Icons.download_outlined),
-                      label: const Text('Baixar Imagem do Mapa'),
-                      onPressed: () async {
-                        final url = Uri.parse(widget.feiraEvento.mapaUrl!);
-                        if (await canLaunchUrl(url)) {
-                          await launchUrl(
-                            url,
-                            mode: LaunchMode.externalApplication,
-                          );
-                        }
-                      },
-                    ),
-                  ],
-
-                  if (isAdmin) ...[
-                    // const Divider(height: 40),
-
-                    // --- LÓGICA DE VISIBILIDADE DOS BOTÕES ---
-
-                    // 1. Botão para ATIVAR: só aparece se a feira for 'agendada'
-                    if (widget.feiraEvento.status == StatusFeira.agendada &&
-                        !isFeiraAtiva)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          label: const Text('Tornar Esta Feira Ativa'),
-                          onPressed: _tornarFeiraAtiva,
-                        ),
-                      ),
-
-                    // 2. Botão para FINALIZAR: só aparece se a feira for a ATIVA
-                    if (isFeiraAtiva)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          label: const Text('Marcar como Finalizada'),
-                          onPressed: _finalizarFeira,
-                        ),
-                      ),
-                  ],
-
-                  // ESPAÇO RESERVADO PARA LISTA DE PRESENÇA
-                  const Divider(height: 40),
-                  // TODO: Futuramente, a lista de presença será inserida aqui.
-                  // Por enquanto, pode ser um Text.
-                  const Center(
-                    child: Text('Funcionalidade de presença em breve...'),
-                  ),
+                  // Cada "filho" é o conteúdo de uma aba
+                  _buildTabVisaoGeral(context),
+                  _buildTabGestaoPresenca(context),
+                  _buildTabEstatisticas(context),
                 ],
               ),
+    );
+  }
+
+  // --- WIDGETS PARA CADA ABA ---
+
+  /// Constrói o conteúdo da aba "Visão Geral"
+  Widget _buildTabVisaoGeral(BuildContext context) {
+    // Este widget conterá os detalhes da feira e os botões de ação principais.
+    // Reutilizamos a lógica que já tínhamos.
+    final bool isAdmin =
+        Provider.of<UserProvider>(context, listen: false).usuario?.papel ==
+        'admin';
+    final theme = Theme.of(context);
+    final bool isFeiraAtiva = _feiraAtual.id == _idFeiraAtiva;
+
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        // Aqui entram os cards de informação, mapa interativo, etc.
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Detalhes da Feira', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 8),
+                Text(
+                  'Data: ${DateFormat('dd/MM/yyyy').format(_feiraAtual.data)}',
+                ),
+                if (_feiraAtual.anotacoes.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('Anotações: ${_feiraAtual.anotacoes}'),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Lógica dos botões de ação que já tínhamos
+        if (isAdmin) ...[
+          if (_feiraAtual.status == StatusFeira.agendada && !isFeiraAtiva)
+            ElevatedButton.icon(
+              icon: const Icon(Icons.star_outline),
+              label: const Text('Tornar Esta Feira Ativa'),
+              onPressed: _tornarFeiraAtiva,
+            ),
+
+          if (isFeiraAtiva)
+            OutlinedButton.icon(
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('Marcar como Finalizada'),
+              onPressed: _finalizarFeira,
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTabGestaoPresenca(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              labelText: 'Buscar Feirante por nome',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _expositoresFiltrados.length,
+            itemBuilder: (context, index) {
+              final expositor = _expositoresFiltrados[index];
+              final registro = _feiraAtual.presencaExpositores[expositor.id];
+
+              return _buildExpositorPresenceCard(expositor, registro);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Card individual para cada expositor na lista de gestão
+  Widget _buildExpositorPresenceCard(
+    Expositor expositor,
+    RegistroPresenca? registro,
+  ) {
+    final statusInteresse = registro?.interesse ?? StatusInteresse.pendente;
+    final checkinGps = registro?.checkinGps ?? false;
+    final presencaFinal = registro?.presencaFinal ?? StatusPresenca.pendente;
+
+    Color cardColor = Colors.white;
+    if (presencaFinal == StatusPresenca.presente) {
+      cardColor = Colors.green.shade50;
+    } else if (presencaFinal == StatusPresenca.ausente) {
+      cardColor = Colors.red.shade50;
+    }
+
+    return Card(
+      color: cardColor,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              expositor.nome,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatusChip(
+                  'Interesse',
+                  statusInteresse.name,
+                  statusInteresse != StatusInteresse.pendente,
+                ),
+                _buildStatusChip(
+                  'Check-in GPS',
+                  checkinGps ? 'Realizado' : 'Não',
+                  checkinGps,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Mostra os botões de ação apenas se a presença final estiver pendente
+            if (presencaFinal == StatusPresenca.pendente)
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.check),
+                      label: const Text('Presente'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      onPressed:
+                          () => _confirmarPresenca(
+                            expositor.id!,
+                            StatusPresenca.presente,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.close),
+                      label: const Text('Ausente'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      onPressed:
+                          () => _confirmarPresenca(
+                            expositor.id!,
+                            StatusPresenca.ausente,
+                          ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Center(
+                child: Text(
+                  'Presença Final: ${presencaFinal.name.toUpperCase()}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color:
+                        presencaFinal == StatusPresenca.presente
+                            ? Colors.green
+                            : Colors.red,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Chip de status auxiliar
+  Widget _buildStatusChip(String label, String value, bool isActive) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Chip(
+          label: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor:
+              isActive ? Colors.blue.shade100 : Colors.grey.shade200,
+          padding: EdgeInsets.zero,
+        ),
+      ],
+    );
+  }
+
+  /// Constrói o conteúdo da aba "Estatísticas"
+  Widget _buildTabEstatisticas(BuildContext context) {
+    // Onde nosso dashboard de estatísticas será construído.
+    // Por enquanto, um placeholder.
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text(
+          'Aqui ficará o dashboard com as estatísticas da feira. (Em construção)',
+          style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
+          textAlign: TextAlign.center,
+        ),
+      ),
     );
   }
 }

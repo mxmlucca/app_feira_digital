@@ -52,6 +52,8 @@ dependencies:
   firebase_app_check: ^0.3.0
 
   rxdart: ^0.28.0
+
+  geolocator: ^12.0.0
   
 dev_dependencies:
   flutter_test:

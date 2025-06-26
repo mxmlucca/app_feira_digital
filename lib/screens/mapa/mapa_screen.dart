@@ -69,6 +69,7 @@ class _MapaScreenState extends State<MapaScreen> {
                     'Seu Estande: ${expositor.numeroEstande ?? "Não definido"}',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
                   ),
                 ],

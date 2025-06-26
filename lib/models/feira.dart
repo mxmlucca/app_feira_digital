@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'registro_presenca.dart';
 
 enum StatusFeira { agendada, finalizada }
 
@@ -9,7 +10,7 @@ class Feira {
   final String anotacoes;
   final StatusFeira status;
   final String? mapaUrl;
-  final Map<String, bool?>? presencaExpositores;
+  final Map<String, RegistroPresenca> presencaExpositores;
 
   Feira({
     this.id,
@@ -18,8 +19,8 @@ class Feira {
     this.anotacoes = '',
     this.status = StatusFeira.agendada,
     this.mapaUrl,
-    this.presencaExpositores,
-  });
+    Map<String, RegistroPresenca>? presencaExpositores,
+  }) : presencaExpositores = presencaExpositores ?? {};
 
   // Helper para converter o enum StatusFeira para String (para guardar no Firestore)
   String get statusToString => status.toString().split('.').last;
@@ -33,6 +34,17 @@ class Feira {
   }
 
   factory Feira.fromMap(Map<String, dynamic> data, String documentId) {
+    var presencaMap = <String, RegistroPresenca>{};
+    if (data['presencaExpositores'] != null) {
+      final mapaDoFirestore =
+          data['presencaExpositores'] as Map<String, dynamic>;
+      mapaDoFirestore.forEach((key, value) {
+        presencaMap[key] = RegistroPresenca.fromMap(
+          value as Map<String, dynamic>,
+        );
+      });
+    }
+
     return Feira(
       id: documentId,
       data: (data['data'] as Timestamp).toDate(),
@@ -40,10 +52,7 @@ class Feira {
       anotacoes: data['anotacoes'] ?? '',
       status: statusFromString(data['status']),
       mapaUrl: data['mapaUrl'],
-      presencaExpositores:
-          data['presencaExpositores'] != null
-              ? Map<String, bool?>.from(data['presencaExpositores'])
-              : {},
+      presencaExpositores: presencaMap,
     );
   }
 
@@ -54,7 +63,9 @@ class Feira {
       'anotacoes': anotacoes,
       'status': statusToString,
       'mapaUrl': mapaUrl,
-      'presencaExpositores': presencaExpositores,
+      'presencaExpositores': presencaExpositores.map(
+        (key, value) => MapEntry(key, value.toMap()),
+      ),
     };
   }
 }

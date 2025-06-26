@@ -1,35 +1,35 @@
 /// main.dart
 
-/// Importação de pacotes necessários
-import 'package:flutter/foundation.dart';
+/// Importação de pacotes
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart'; // Flutter framework
-import 'package:firebase_core/firebase_core.dart'; // Firebase core para inicialização
-import 'firebase_options.dart'; // Configurações do Firebase geradas pelo FlutterFire CLI
-import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth para autenticação
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:provider/provider.dart'; // Provider para gerenciamento de estado
-import 'services/user_provider.dart'; // Provider para gerenciar o estado do usuário
-import 'package:firebase_app_check/firebase_app_check.dart'; // Importe o pacote
+import 'package:provider/provider.dart';
+import 'services/user_provider.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
+/// Models
 import '../models/expositor.dart';
-import '../models/feira.dart'; // Modelo de Feira
+import '../models/feira.dart';
 
 /// Importação de telas e widgets
-import 'screens/login_screen.dart'; // Tela de login
-import 'screens/expositores/expositor_list_screen.dart'; // Tela de lista de expositores
-import 'screens/expositores/expositor_form_screen.dart'; // Tela de formulário de expositores
-import 'screens/expositores/expositor_detail_screen.dart'; // Tela de detalhes do expositor
-import 'screens/mapa/mapa_screen.dart'; // Tela de mapa
-import 'screens/feiras/feira_list_screen.dart'; // Tela de agenda
+import 'screens/login_screen.dart';
+import 'screens/expositores/expositor_form_screen.dart';
+import 'screens/expositores/expositor_detail_screen.dart';
 import 'screens/admin/admin_expositor_detail_screen.dart';
-import 'screens/feiras/feira_form_screen.dart'; // Tela de formulário de feira
+import 'screens/feiras/feira_form_screen.dart';
 import 'screens/cadastro/cadastro_expositor_screen.dart';
 import 'screens/cadastro/cadastro_aprovacao_screen.dart';
 import 'screens/cadastro/cadastro_reprovado_screen.dart';
 import 'screens/mapa/mapa_viewer_screen.dart';
-import 'screens/admin/admin_aprovacao_screen.dart'; // Tela de aprovação de expositores para administradores
-import 'widgets/main_scaffold.dart'; // Scaffold principal com BottomNavigationBar
+import 'screens/admin/admin_aprovacao_screen.dart';
+import 'widgets/main_scaffold.dart';
+import 'screens/admin/admin_dashboard_screen.dart';
+import 'screens/expositores/expositor_home_screen.dart';
+import 'screens/feiras/agenda_screen.dart';
 
 /// Função principal que inicia o aplicativo Flutter.
 // - 'async' permite o uso de operações assíncronas, como inicialização de plugins.
@@ -45,16 +45,12 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // ----- ALTERAÇÃO PARA DEPURAR NO ANDROID -----
     await FirebaseAppCheck.instance.activate(
-      // No Android, use o provedor de depuração.
-      // Na Web, continue usando o reCAPTCHA.
       androidProvider: AndroidProvider.debug,
       webProvider: ReCaptchaV3Provider(
         '6LdnsmorAAAAALGjF_-ofHO9gmXG2GtbARvd0tFH',
       ),
     );
-    // ---------------------------------------------
 
     print("Firebase e AppCheck inicializados.");
   } else {
@@ -102,9 +98,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Feira Digital', // Título do aplicativo
-      debugShowCheckedModeBanner:
-          false, // Desativa a faixa de depuração no canto superior direito
+      title: 'Feira Digital',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         // Definição das cores tema do aplicativo
         colorScheme: ColorScheme.fromSeed(
@@ -285,10 +280,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-
-      /// Definição das rotas do aplicativo
-      home:
-          const AuthWrapper(), // Tela inicial que verifica o estado de autenticação do utilizador
+      home: const AuthWrapper(),
       onGenerateRoute: (settings) {
         print('Rota solicitada: ${settings.name}');
 
@@ -308,7 +300,7 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(builder: (context) => const LoginScreen());
         }
 
-        // Rotas Protegidas (acessíveis apenas com login)
+        // Rotas Protegidas
         switch (settings.name) {
           // Rotas de Cadastro
           case CadastroReprovadoScreen.routeName:
@@ -320,6 +312,12 @@ class MyApp extends StatelessWidget {
           case MainScaffold.routeName:
             return MaterialPageRoute(
               builder: (context) => const MainScaffold(),
+            );
+
+          // Expositor
+          case ExpositorHomeScreen.routeName:
+            return MaterialPageRoute(
+              builder: (context) => const ExpositorHomeScreen(),
             );
 
           case ExpositorFormScreen.routeNameAdd:
@@ -339,31 +337,36 @@ class MyApp extends StatelessWidget {
               builder: (context) => ExpositorDetailScreen(expositor: expositor),
             );
 
+          // Feira
           case FeiraFormScreen.routeNameAdd:
-            // Rota para adicionar uma nova feira
             return MaterialPageRoute(
               builder: (context) => const FeiraFormScreen(),
             );
 
           case FeiraFormScreen.routeNameEdit:
-            // Rota para editar uma feira existente
             final feiraEvento = settings.arguments as Feira?;
             return MaterialPageRoute(
               builder: (context) => FeiraFormScreen(feiraEvento: feiraEvento),
             );
 
+          case AgendaScreen.routeName:
+            return MaterialPageRoute(
+              builder: (context) => const AgendaScreen(),
+            );
+
+          // Mapa
           case MapaViewerScreen.routeName:
             final mapaUrl = settings.arguments as String;
             return MaterialPageRoute(
               builder: (context) => MapaViewerScreen(mapaUrl: mapaUrl),
             );
 
-          // FeiraFormScreen.routeNameAdd: (context) => const FeiraFormScreen(),
+          // Admin
+          case AdminDashboardScreen.routeName:
+            return MaterialPageRoute(
+              builder: (context) => const AdminDashboardScreen(),
+            );
 
-          // AgendaScreen.routeName: (context) => const AgendaScreen(),
-          // MapaScreen.routeName: (context) => const MapaScreen(),
-          // CadastroExpositorScreen.routeName:
-          //     (context) => const CadastroExpositorScreen(),
           case AdminAprovacaoScreen.routeName:
             return MaterialPageRoute(
               builder: (context) => const AdminAprovacaoScreen(),
@@ -405,12 +408,7 @@ class AuthWrapper extends StatelessWidget {
         if (userProvider.usuario!.papel == 'admin') {
           return const MainScaffold();
         }
-
-        // Se o papel for expositor, a lógica é mais detalhada.
         if (userProvider.usuario!.papel == 'expositor') {
-          // Primeiro, verifica se o perfil do expositor já foi carregado.
-          // Se não, o UserProvider ainda está a buscar, então mostramos um spinner.
-          // Isto é crucial se getUsuario() e getExpositorPorId() não acontecem atomicamente.
           if (userProvider.expositorProfile == null) {
             print(
               "AuthWrapper: Aguardando perfil do expositor ser carregado...",
@@ -430,12 +428,9 @@ class AuthWrapper extends StatelessWidget {
               expositorReprovado: userProvider.expositorProfile,
             );
           } else {
-            // 'aguardando_aprovacao' ou qualquer outro estado
             return const AguardandoAprovacaoScreen();
           }
         }
-
-        // Se não for nem admin nem expositor, é um estado inesperado, manda para o login.
         return const LoginScreen();
       },
     );

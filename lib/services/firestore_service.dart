@@ -3,6 +3,8 @@ import 'package:rxdart/rxdart.dart';
 import '../models/expositor.dart';
 import '../models/feira.dart';
 import '../models/usuario.dart';
+import '../models/configuracao_feira.dart';
+import '../models/registro_presenca.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -103,12 +105,80 @@ class FirestoreService {
     }
   }
 
+  Future<void> registrarInteresseExpositor({
+    required String feiraId,
+    required Expositor expositor, // Passamos o objeto completo do expositor
+    required StatusInteresse novoStatus,
+  }) async {
+    try {
+      // Pega a referência para o documento da feira
+      final feiraRef = _db.collection('feiras').doc(feiraId);
+
+      // Cria um novo objeto de registro de presença com os dados do expositor
+      // e o novo status de interesse.
+      final novoRegistro = RegistroPresenca(
+        nomeExpositor: expositor.nome,
+        categoria: expositor.tipoProdutoServico,
+        interesse: novoStatus,
+      );
+
+      // Usa a notação de ponto para criar/atualizar o campo específico
+      // do expositor dentro do mapa 'presencaExpositores'.
+      // Ex: presencaExpositores.ID_DO_EXPOSITOR = { ...dados... }
+      await feiraRef.update({
+        'presencaExpositores.${expositor.id}': novoRegistro.toMap(),
+      });
+
+      print(
+        'Interesse do expositor ${expositor.id} atualizado para $novoStatus na feira $feiraId.',
+      );
+    } catch (e) {
+      print('Erro ao registrar interesse: $e');
+      rethrow;
+    }
+  }
+
   /// Funções de Feiras
 
+  // --- MÉTODO ATUALIZADO ---
+  /// Adiciona um novo evento de feira e automaticamente pré-popula a lista de
+  /// presença com todos os expositores ativos no momento da criação.
   Future<void> adicionarFeiraEvento(Feira evento) async {
     try {
-      await _feirasRef.add(evento);
-      print('Evento da feira adicionado com sucesso!');
+      // 1. Buscar todos os expositores com status 'ativo'
+      final querySnapshot =
+          await _expositoresRef.where('status', isEqualTo: 'ativo').get();
+      final todosExpositoresAtivos =
+          querySnapshot.docs.map((doc) => doc.data()).toList();
+
+      // 2. Criar o mapa de presença inicial
+      final mapaDePresencaInicial = <String, RegistroPresenca>{};
+      for (var expositor in todosExpositoresAtivos) {
+        if (expositor.id != null) {
+          mapaDePresencaInicial[expositor.id!] = RegistroPresenca(
+            nomeExpositor: expositor.nome,
+            categoria: expositor.tipoProdutoServico,
+            // O status de interesse de todos começa como 'pendente'
+            interesse: StatusInteresse.pendente,
+          );
+        }
+      }
+
+      // 3. Criar uma nova instância da Feira com a lista de presença pré-populada
+      final feiraComPresenca = Feira(
+        titulo: evento.titulo,
+        data: evento.data,
+        anotacoes: evento.anotacoes,
+        mapaUrl: evento.mapaUrl,
+        status: evento.status, // Será 'agendada' por defeito
+        presencaExpositores: mapaDePresencaInicial,
+      );
+
+      // 4. Adicionar o novo documento completo ao Firestore
+      await _feirasRef.add(feiraComPresenca);
+      print(
+        'Evento da feira adicionado com sucesso, com ${mapaDePresencaInicial.length} expositores na lista de presença.',
+      );
     } catch (e) {
       print('Erro ao adicionar evento da feira: $e');
       rethrow;
@@ -190,9 +260,11 @@ class FirestoreService {
 
   Future<void> setFeiraAtiva(String novoIdFeira) async {
     try {
-      await _db.collection('configuracoes').doc('feira_ativa').set({
+      // CORREÇÃO: Use .update() para modificar apenas o campo, preservando os outros.
+      await _db.collection('configuracoes').doc('feira_ativa').update({
         'idFeiraAtual': novoIdFeira,
       });
+      print('Feira ativa atualizada com sucesso para o ID: $novoIdFeira');
     } catch (e) {
       print("Erro ao definir a feira ativa: $e");
       rethrow;
@@ -248,6 +320,46 @@ class FirestoreService {
     });
   }
 
+  Future<void> realizarCheckinExpositor({
+    required String feiraId,
+    required String expositorId,
+  }) async {
+    try {
+      final feiraRef = _db.collection('feiras').doc(feiraId);
+
+      // Usa a notação de ponto para atualizar apenas os campos de check-in
+      // do registro de presença do expositor específico.
+      await feiraRef.update({
+        'presencaExpositores.$expositorId.checkinGps': true,
+        'presencaExpositores.$expositorId.checkinTimestamp': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Erro ao realizar check-in: $e');
+      rethrow;
+    }
+  }
+
+  /// Define o status final da presença de um expositor, ação realizada pelo admin.
+  Future<void> confirmarPresencaFinal({
+    required String feiraId,
+    required String expositorId,
+    required StatusPresenca statusFinal,
+  }) async {
+    try {
+      final feiraRef = _db.collection('feiras').doc(feiraId);
+
+      // Usa set com merge para garantir que o caminho exista e atualiza o campo.
+      await feiraRef.set({
+        'presencaExpositores': {
+          expositorId: {'presenca_final': statusFinal.name},
+        },
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Erro ao confirmar presença final: $e');
+      rethrow;
+    }
+  }
+
   // --- Operações para Usuários ---
 
   /// Busca os dados de um utilizador no Firestore a partir do seu UID.
@@ -300,5 +412,19 @@ class FirestoreService {
       print("Erro ao atualizar status do expositor: $e");
       rethrow;
     }
+  }
+
+  /// Busca as configurações gerais da feira, como local padrão e ID da feira ativa.
+  Future<ConfiguracaoFeira?> getConfiguracaoFeira() async {
+    try {
+      final doc =
+          await _db.collection('configuracoes').doc('feira_ativa').get();
+      if (doc.exists && doc.data() != null) {
+        return ConfiguracaoFeira.fromMap(doc.data()!);
+      }
+    } catch (e) {
+      print("Erro ao buscar configuração da feira: $e");
+    }
+    return null;
   }
 }

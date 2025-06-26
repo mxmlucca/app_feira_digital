@@ -131,37 +131,37 @@ class _ExpositorDetailScreenState extends State<ExpositorDetailScreen> {
     );
   }
 
-  Widget _buildGridItem(Feira feira) {
-    final bool? presente = feira.presencaExpositores?[widget.expositor.id];
-    Color corIcone = Colors.grey;
-    IconData icone = Icons.schedule;
+  // Widget _buildGridItem(Feira feira) {
+  //   final bool? presente = feira.presencaExpositores?[widget.expositor.id];
+  //   Color corIcone = Colors.grey;
+  //   IconData icone = Icons.schedule;
 
-    if (presente == true) {
-      corIcone = Colors.green.shade700;
-      icone = Icons.check_circle;
-    } else if (presente == false) {
-      corIcone = Colors.red.shade700;
-      icone = Icons.cancel;
-    }
+  //   if (presente == true) {
+  //     corIcone = Colors.green.shade700;
+  //     icone = Icons.check_circle;
+  //   } else if (presente == false) {
+  //     corIcone = Colors.red.shade700;
+  //     icone = Icons.cancel;
+  //   }
 
-    return Card(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(4.0), // Padding interno reduzido
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              DateFormat('dd/MM').format(feira.data),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-            ), // Fonte menor
-            const SizedBox(height: 4.0),
-            Icon(icone, color: corIcone, size: 28), // Ícone um pouco menor
-          ],
-        ),
-      ),
-    );
-  }
+  //   return Card(
+  //     color: Colors.white,
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(4.0), // Padding interno reduzido
+  //       child: Column(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         children: [
+  //           Text(
+  //             DateFormat('dd/MM').format(feira.data),
+  //             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+  //           ), // Fonte menor
+  //           const SizedBox(height: 4.0),
+  //           Icon(icone, color: corIcone, size: 28), // Ícone um pouco menor
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -311,94 +311,94 @@ class _ExpositorDetailScreenState extends State<ExpositorDetailScreen> {
           ],
           const SizedBox(height: 32.0),
 
-          // --- Secção Histórico de Presença ---
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios),
-                onPressed: () => setState(() => _anoSelecionado--),
-              ),
-              Text(
-                _anoSelecionado.toString(),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: corTextoPrincipal,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.arrow_forward_ios),
-                onPressed: () => setState(() => _anoSelecionado++),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
+          // // --- Secção Histórico de Presença ---
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.center,
+          //   children: [
+          //     IconButton(
+          //       icon: const Icon(Icons.arrow_back_ios),
+          //       onPressed: () => setState(() => _anoSelecionado--),
+          //     ),
+          //     Text(
+          //       _anoSelecionado.toString(),
+          //       style: theme.textTheme.titleLarge?.copyWith(
+          //         fontWeight: FontWeight.bold,
+          //         color: corTextoPrincipal,
+          //       ),
+          //     ),
+          //     IconButton(
+          //       icon: const Icon(Icons.arrow_forward_ios),
+          //       onPressed: () => setState(() => _anoSelecionado++),
+          //     ),
+          //   ],
+          // ),
+          // const SizedBox(height: 8.0),
 
-          Container(
-            padding: const EdgeInsets.all(8.0),
-            decoration: BoxDecoration(
-              color: corBotao,
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            child: StreamBuilder<List<Feira>>(
-              stream: _firestoreService.getFeiraEventos(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: CircularProgressIndicator(color: Colors.white),
-                    ),
-                  );
-                }
-                if (snapshot.hasError)
-                  return Center(
-                    child: Text(
-                      'Erro: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  );
-                if (!snapshot.hasData || snapshot.data!.isEmpty)
-                  return const Center(
-                    child: Text(
-                      'Nenhuma feira encontrada.',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  );
+          // Container(
+          //   padding: const EdgeInsets.all(8.0),
+          //   decoration: BoxDecoration(
+          //     color: corBotao,
+          //     borderRadius: BorderRadius.circular(12.0),
+          //   ),
+          //   child: StreamBuilder<List<Feira>>(
+          //     stream: _firestoreService.getFeiraEventos(),
+          //     builder: (context, snapshot) {
+          //       if (snapshot.connectionState == ConnectionState.waiting) {
+          //         return const Center(
+          //           child: Padding(
+          //             padding: EdgeInsets.all(32.0),
+          //             child: CircularProgressIndicator(color: Colors.white),
+          //           ),
+          //         );
+          //       }
+          //       if (snapshot.hasError)
+          //         return Center(
+          //           child: Text(
+          //             'Erro: ${snapshot.error}',
+          //             style: const TextStyle(color: Colors.white),
+          //           ),
+          //         );
+          //       if (!snapshot.hasData || snapshot.data!.isEmpty)
+          //         return const Center(
+          //           child: Text(
+          //             'Nenhuma feira encontrada.',
+          //             style: TextStyle(color: Colors.white),
+          //           ),
+          //         );
 
-                final feirasDoAno =
-                    snapshot.data!
-                        .where((feira) => feira.data.year == _anoSelecionado)
-                        .toList();
+          //       final feirasDoAno =
+          //           snapshot.data!
+          //               .where((feira) => feira.data.year == _anoSelecionado)
+          //               .toList();
 
-                if (feirasDoAno.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        'Nenhuma feira encontrada para $_anoSelecionado.',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  );
-                }
+          //       if (feirasDoAno.isEmpty) {
+          //         return Center(
+          //           child: Padding(
+          //             padding: const EdgeInsets.all(16.0),
+          //             child: Text(
+          //               'Nenhuma feira encontrada para $_anoSelecionado.',
+          //               style: const TextStyle(color: Colors.white),
+          //             ),
+          //           ),
+          //         );
+          //       }
 
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    crossAxisSpacing: 8.0,
-                    mainAxisSpacing: 8.0,
-                  ),
-                  itemCount: feirasDoAno.length,
-                  itemBuilder: (context, index) {
-                    return _buildGridItem(feirasDoAno[index]);
-                  },
-                );
-              },
-            ),
-          ),
+          //       return GridView.builder(
+          //         shrinkWrap: true,
+          //         physics: const NeverScrollableScrollPhysics(),
+          //         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          //           crossAxisCount: 4,
+          //           crossAxisSpacing: 8.0,
+          //           mainAxisSpacing: 8.0,
+          //         ),
+          //         itemCount: feirasDoAno.length,
+          //         itemBuilder: (context, index) {
+          //           return _buildGridItem(feirasDoAno[index]);
+          //         },
+          //       );
+          //     },
+          //   ),
+          // ),
         ],
       ),
     );

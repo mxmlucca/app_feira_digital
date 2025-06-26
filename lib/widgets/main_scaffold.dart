@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Importar o Provider
-import '../services/user_provider.dart'; // Importar o nosso UserProvider
+import 'package:provider/provider.dart';
+import '../services/user_provider.dart';
 
 // Importações das Telas
-import '../screens/home_screen.dart';
+import '../screens/admin/admin_dashboard_screen.dart';
+import '../screens/admin/admin_aprovacao_screen.dart';
 import '../screens/expositores/expositor_list_screen.dart';
-import '../screens/mapa/mapa_screen.dart';
 import '../screens/feiras/feira_list_screen.dart';
+
+import '../screens/expositores/expositor_home_screen.dart';
+import '../screens/feiras/agenda_screen.dart';
 import '../screens/profile/profile_loader_screen.dart';
 
 class MainScaffold extends StatefulWidget {
@@ -41,31 +44,31 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (userRole == 'admin') {
       // Telas e Itens de Navegação para o ADMIN
       screens = [
-        const HomeScreen(), // Aba 0: Home/Dashboard do Admin
-        const ExpositorListScreen(), // Aba 1: Lista de Expositores
-        const MapaScreen(), // Aba 2: Mapa
-        const FeiraListScreen(), // Aba 3: Agenda de Feiras
+        const AdminDashboardScreen(), // Aba 0: Home/Dashboard do Admin
+        const FeiraListScreen(), // Aba 1: Lista de Feiras
+        const ExpositorListScreen(), // Aba 2: Lista de Expositores
+        const AdminAprovacaoScreen(), // Aba 3: Lista de Aprovações
       ];
       navItems = [
         const BottomNavigationBarItem(
           icon: Icon(Icons.dashboard_outlined),
           activeIcon: Icon(Icons.dashboard),
-          label: 'Admin Home',
+          label: 'Dashboard',
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.calendar_month_outlined),
+          activeIcon: Icon(Icons.calendar_month),
+          label: 'Feiras',
         ),
         const BottomNavigationBarItem(
           icon: Icon(Icons.store_outlined),
           activeIcon: Icon(Icons.store),
-          label: 'Expositores',
+          label: 'Feirantes',
         ),
         const BottomNavigationBarItem(
-          icon: Icon(Icons.map_outlined),
-          activeIcon: Icon(Icons.map),
-          label: 'Mapa',
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.event_outlined),
-          activeIcon: Icon(Icons.event),
-          label: 'Agenda',
+          icon: Icon(Icons.how_to_reg_outlined),
+          activeIcon: Icon(Icons.how_to_reg),
+          label: 'Aprovações',
         ),
       ];
     } else {
@@ -73,25 +76,25 @@ class _MainScaffoldState extends State<MainScaffold> {
       // Telas e Itens de Navegação para o EXPOSITOR
       screens = [
         // A tela 'Meus Dados' pode ser a HomeScreen, ou uma nova ProfileScreen
-        const HomeScreen(), // Aba 0: Meus Dados (usando a HomeScreen por enquanto)
-        const MapaScreen(), // Aba 1: Mapa
+        const ExpositorHomeScreen(), // Aba 0: Inicio (usando a HomeScreen por enquanto)
+        const AgendaScreen(), // Aba 1: Agenda
         const ProfileLoaderScreen(), // Aba 2: Meus Dados (carregando os dados do expositor)
       ];
       navItems = [
         const BottomNavigationBarItem(
-          icon: Icon(Icons.house),
-          activeIcon: Icon(Icons.house_outlined),
-          label: 'Home',
+          icon: Icon(Icons.house_outlined),
+          activeIcon: Icon(Icons.house),
+          label: 'Inicio',
         ),
         const BottomNavigationBarItem(
-          icon: Icon(Icons.map_outlined),
-          activeIcon: Icon(Icons.map),
-          label: 'Mapa',
+          icon: Icon(Icons.event_note_outlined),
+          activeIcon: Icon(Icons.event_note),
+          label: 'Agenda',
         ),
         const BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          activeIcon: Icon(Icons.person_outline),
-          label: 'Meus Dados',
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
+          label: 'Meu Perfil',
         ),
       ];
     }
