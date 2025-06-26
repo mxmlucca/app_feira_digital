@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../models/feira.dart';
 import '../../models/expositor.dart';
 import '../../models/registro_presenca.dart';
@@ -8,7 +7,6 @@ import '../../services/firestore_service.dart';
 import 'package:provider/provider.dart';
 import '../../services/user_provider.dart';
 import 'feira_form_screen.dart';
-import '../mapa/mapa_viewer_screen.dart';
 
 class FeiraDetailScreen extends StatefulWidget {
   final Feira feiraEvento;
@@ -66,6 +64,15 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen>
             .first; // Pega a primeira emissão da lista
 
     if (mounted) {
+      List<Expositor> expositoresAtivos =
+          expositores.where((e) => e.status == 'ativo').toList();
+      // --- ORDENAÇÃO POR ESTANDE ---
+      expositoresAtivos.sort((a, b) {
+        int? numA = int.tryParse(a.numeroEstande ?? '');
+        int? numB = int.tryParse(b.numeroEstande ?? '');
+        if (numA != null && numB != null) return numA.compareTo(numB);
+        return (a.numeroEstande ?? '').compareTo(b.numeroEstande ?? '');
+      });
       setState(() {
         _idFeiraAtiva = feiraAtiva?.id;
         _todosExpositores =
@@ -353,6 +360,15 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen>
   }
 
   Widget _buildTabGestaoPresenca(BuildContext context) {
+    final Map<String, List<Expositor>> expositoresPorCategoria = {};
+    for (var expositor in _expositoresFiltrados) {
+      (expositoresPorCategoria[expositor.tipoProdutoServico] ??= []).add(
+        expositor,
+      );
+    }
+
+    final categoriasOrdenadas = expositoresPorCategoria.keys.toList()..sort();
+
     return Column(
       children: [
         Padding(
@@ -360,7 +376,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen>
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              labelText: 'Buscar Feirante por nome',
+              hintText: 'Buscar Feirante por nome...',
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -370,12 +386,35 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen>
         ),
         Expanded(
           child: ListView.builder(
-            itemCount: _expositoresFiltrados.length,
+            itemCount: categoriasOrdenadas.length,
             itemBuilder: (context, index) {
-              final expositor = _expositoresFiltrados[index];
-              final registro = _feiraAtual.presencaExpositores[expositor.id];
+              final categoria = categoriasOrdenadas[index];
+              final expositoresDaCategoria =
+                  expositoresPorCategoria[categoria]!;
 
-              return _buildExpositorPresenceCard(expositor, registro);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header da Categoria
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Text(
+                      categoria.toUpperCase(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  // Lista de expositores daquela categoria
+                  ...expositoresDaCategoria.map((expositor) {
+                    final registro =
+                        _feiraAtual.presencaExpositores[expositor.id];
+                    return _buildExpositorPresenceCard(expositor, registro);
+                  }).toList(),
+                ],
+              );
             },
           ),
         ),
@@ -388,16 +427,16 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen>
     Expositor expositor,
     RegistroPresenca? registro,
   ) {
+    final theme = Theme.of(context);
     final statusInteresse = registro?.interesse ?? StatusInteresse.pendente;
     final checkinGps = registro?.checkinGps ?? false;
     final presencaFinal = registro?.presencaFinal ?? StatusPresenca.pendente;
 
     Color cardColor = Colors.white;
-    if (presencaFinal == StatusPresenca.presente) {
+    if (presencaFinal == StatusPresenca.presente)
       cardColor = Colors.green.shade50;
-    } else if (presencaFinal == StatusPresenca.ausente) {
+    else if (presencaFinal == StatusPresenca.ausente)
       cardColor = Colors.red.shade50;
-    }
 
     return Card(
       color: cardColor,
@@ -405,11 +444,32 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen>
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              expositor.nome,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            Row(
+              children: [
+                // Círculo com o número do estande
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: theme.colorScheme.primary,
+                  child: Text(
+                    expositor.numeroEstande ?? 'S/N',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    expositor.nome,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const Divider(),
             Row(
@@ -428,7 +488,7 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen>
               ],
             ),
             const SizedBox(height: 12),
-            // Mostra os botões de ação apenas se a presença final estiver pendente
+
             if (presencaFinal == StatusPresenca.pendente)
               Row(
                 children: [
@@ -464,17 +524,33 @@ class _FeiraDetailScreenState extends State<FeiraDetailScreen>
                 ],
               )
             else
-              Center(
-                child: Text(
-                  'Presença Final: ${presencaFinal.name.toUpperCase()}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color:
-                        presencaFinal == StatusPresenca.presente
-                            ? Colors.green
-                            : Colors.red,
+              // --- SEÇÃO COM O BOTÃO DE REFAZER ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Presença Final: ${presencaFinal.name.toUpperCase()}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color:
+                          presencaFinal == StatusPresenca.presente
+                              ? Colors.green.shade800
+                              : Colors.red.shade800,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  // Botão para resetar o status para 'pendente'
+                  IconButton(
+                    icon: const Icon(Icons.undo, color: Colors.grey),
+                    tooltip: 'Editar Presença',
+                    onPressed:
+                        () => _confirmarPresenca(
+                          expositor.id!,
+                          StatusPresenca.pendente,
+                        ),
+                  ),
+                ],
               ),
           ],
         ),
