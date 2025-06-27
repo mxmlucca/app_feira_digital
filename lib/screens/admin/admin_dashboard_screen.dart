@@ -79,6 +79,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
+            if (snapshot.hasError) {
+              print("Erro no Stream da feira ativa: ${snapshot.error}");
+              return const Center(
+                child: Text(
+                  'Erro ao carregar dados da feira.',
+                  style: TextStyle(color: Colors.red),
+                ),
+              );
+            }
+            // --- FIM DA ADIÇÃO ---
+
             final feiraAtiva = snapshot.data;
 
             if (feiraAtiva == null) {

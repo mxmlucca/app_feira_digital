@@ -279,6 +279,30 @@ class MyApp extends StatelessWidget {
             color: kCorErro,
           ),
         ),
+
+        dialogTheme: DialogTheme(
+          // Cor de fundo do diálogo. Usaremos um tom de azul escuro que
+          // combina com o fundo dos seus campos de texto.
+          backgroundColor: const Color.fromARGB(255, 40, 48, 61),
+
+          // Bordas arredondadas para um visual mais moderno.
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+
+          // Estilo padrão para o título dos diálogos.
+          titleTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 20.0,
+            fontWeight: FontWeight.bold,
+          ),
+
+          // Estilo padrão para o texto do conteúdo (o corpo) dos diálogos.
+          contentTextStyle: TextStyle(
+            color: Colors.white.withOpacity(0.85),
+            fontSize: 16.0,
+          ),
+        ),
       ),
       home: const AuthWrapper(),
       onGenerateRoute: (settings) {
