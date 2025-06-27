@@ -13,7 +13,20 @@
           "package_name": "com.example.app_feira_digital"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "171373392494-rchpakdqv94fr8p8s9i7s0d4ga0ituo0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.app_feira_digital",
+            "certificate_hash": "a4d710c35c5e90153a0cac3017679296de1e9ce3"
+          }
+        },
+        {
+          "client_id": "171373392494-i4gcu581bvmtd6ugf4vlhgrg5g85439s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBRBisKGStgM0-tmS87n1H-hUST521hvnE"
@@ -21,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "171373392494-i4gcu581bvmtd6ugf4vlhgrg5g85439s.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "171373392494-9htb5ms1sk1aa6fgi8tc3pnvf4p6ltgf.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.appFeiraDigital"
+              }
+            }
+          ]
         }
       }
     }

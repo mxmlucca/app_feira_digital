@@ -3,7 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../services/user_provider.dart';
+import '../screens/cadastro/cadastro_expositor_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -40,6 +42,74 @@ class _LoginScreenState extends State<LoginScreen> {
           context,
         );
       });
+    }
+  }
+
+  // --- NOVA FUNÇÃO PARA LOGIN COM GOOGLE ---
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // Usuário cancelou o login
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      if (user == null) {
+        throw Exception("Não foi possível fazer login com o Google.");
+      }
+
+      // Verifica se é um usuário novo no Firebase Auth
+      final bool isNewUser =
+          userCredential.additionalUserInfo?.isNewUser ?? false;
+
+      if (isNewUser) {
+        // Se for novo, leva para a tela de cadastro para completar o perfil
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => CadastroExpositorScreen(authenticatedUser: user),
+            ),
+          );
+        }
+      } else {
+        // Se já existe, apenas atualiza os dados e deixa o AuthWrapper navegar
+        if (mounted) {
+          await Provider.of<UserProvider>(
+            context,
+            listen: false,
+          ).refreshUserData();
+          await Future.delayed(const Duration(milliseconds: 250));
+        }
+      }
+    } catch (e) {
+      print("Erro no login com Google: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Erro ao fazer login com o Google.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -349,6 +419,34 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 24.0),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
+                            child: Text(
+                              'OU',
+                              style: TextStyle(color: Colors.grey.shade400),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 24.0),
+                      ElevatedButton.icon(
+                        icon: const Icon(
+                          Icons.verified_user,
+                        ), // Você precisará adicionar um logo do Google em assets/images
+                        label: const Text('Entrar com Google'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black87,
+                        ),
+                        onPressed: _isLoading ? null : _handleGoogleSignIn,
                       ),
                     ],
                   ),

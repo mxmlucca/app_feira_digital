@@ -11,9 +11,15 @@ import '../../services/user_provider.dart';
 // Certifique-se de que o caminho e o nome do arquivo estão corretos e que o arquivo contém a classe UserProvider.
 
 class CadastroExpositorScreen extends StatefulWidget {
+  // Mudança: Agora a tela pode receber um usuário já autenticado (via Google)
+  final User? authenticatedUser;
   final Expositor? expositorParaCorrecao;
 
-  const CadastroExpositorScreen({super.key, this.expositorParaCorrecao});
+  const CadastroExpositorScreen({
+    super.key,
+    this.authenticatedUser,
+    this.expositorParaCorrecao,
+  });
 
   static const String routeName = '/cadastro-expositor';
 
@@ -39,7 +45,9 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
   bool _isSaving = false;
   bool _obscurePassword = true;
 
+  // Mudança: Novas flags para controlar o modo da tela
   late bool _isModoCorrecao;
+  late bool _isModoCompletarPerfil;
 
   final List<String> kCategoriasExpositor = [
     'Artesanato',
@@ -75,6 +83,11 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
               : null;
       _situacaoSelecionada =
           kSituacoesExpositor.contains(e.situacao) ? e.situacao : null;
+    } else if (_isModoCompletarPerfil) {
+      // Mudança: Preenche os campos com dados do login social
+      final user = widget.authenticatedUser!;
+      _emailController.text = user.email ?? '';
+      _nomeController.text = user.displayName ?? '';
     }
   }
 
@@ -105,15 +118,15 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
     try {
       User? user;
 
-      if (!_isModoCorrecao) {
+      if (_isModoCompletarPerfil || _isModoCorrecao) {
+        user = FirebaseAuth.instance.currentUser;
+      } else {
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
               email: _emailController.text.trim(),
               password: _passwordController.text.trim(),
             );
         user = userCredential.user;
-      } else {
-        user = FirebaseAuth.instance.currentUser;
       }
 
       if (user == null) throw Exception('Erro de autenticação.');
@@ -246,62 +259,64 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('1. Crie o seu Acesso', style: theme.textTheme.titleLarge),
+              if (_isModoCorrecao || _isModoCompletarPerfil) ...[
+                Text('1. Crie o seu Acesso', style: theme.textTheme.titleLarge),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              // EMAIL
-              TextFormField(
-                controller: _emailController,
-                style: const TextStyle(color: Colors.white),
-                enabled: !_isModoCorrecao,
-                decoration: InputDecoration(
-                  hintText: 'Email',
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  fillColor:
-                      !_isModoCorrecao
-                          ? Color.fromARGB(255, 31, 37, 47)
-                          : Colors.grey.shade300,
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator:
-                    (v) =>
-                        (v == null || !v.contains('@'))
-                            ? 'Email inválido'
-                            : null,
-              ),
-
-              const SizedBox(height: 16),
-
-              // SENHA
-              if (!_isModoCorrecao)
+                // EMAIL
                 TextFormField(
-                  controller: _passwordController,
+                  controller: _emailController,
                   style: const TextStyle(color: Colors.white),
+                  enabled: !_isModoCorrecao,
                   decoration: InputDecoration(
-                    hintText: 'Senha',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
-                      onPressed:
-                          () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                    ),
+                    hintText: 'Email',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    fillColor:
+                        !_isModoCorrecao
+                            ? const Color.fromARGB(255, 31, 37, 47)
+                            : Colors.grey.shade300,
                   ),
-                  obscureText: _obscurePassword,
+                  keyboardType: TextInputType.emailAddress,
                   validator:
                       (v) =>
-                          (v == null || v.length < 6)
-                              ? 'Senha precisa de no mínimo 6 caracteres'
+                          (v == null || !v.contains('@'))
+                              ? 'Email inválido'
                               : null,
                 ),
 
-              const Divider(height: 40, thickness: 1),
+                const SizedBox(height: 16),
+
+                // SENHA
+                if (!_isModoCorrecao && !_isModoCompletarPerfil)
+                  TextFormField(
+                    controller: _passwordController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Senha',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed:
+                            () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                      ),
+                    ),
+                    obscureText: _obscurePassword,
+                    validator:
+                        (v) =>
+                            (v == null || v.length < 6)
+                                ? 'Senha precisa de no mínimo 6 caracteres'
+                                : null,
+                  ),
+
+                const Divider(height: 40, thickness: 1),
+              ],
 
               Text(
                 '2. Suas Informações de Expositor',

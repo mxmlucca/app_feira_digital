@@ -2,6 +2,7 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../models/expositor.dart';
 import '../../models/feira.dart';
 import '../../services/firestore_service.dart';
@@ -24,6 +25,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _handleLogout(BuildContext context) async {
     try {
+      await GoogleSignIn().signOut();
       await FirebaseAuth.instance.signOut();
     } catch (e) {
       print('Erro ao fazer logout: $e');
