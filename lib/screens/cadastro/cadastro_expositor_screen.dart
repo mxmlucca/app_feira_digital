@@ -46,8 +46,9 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
   bool _obscurePassword = true;
 
   // Mudança: Novas flags para controlar o modo da tela
-  late bool _isModoCorrecao;
-  late bool _isModoCompletarPerfil;
+  bool _isModoCorrecao = false;
+  bool _isModoCompletarPerfil = false;
+  bool _cadastroFoiConcluido = false;
 
   final List<String> kCategoriasExpositor = [
     'Artesanato',
@@ -68,8 +69,13 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
   @override
   void initState() {
     super.initState();
-    _isModoCorrecao = widget.expositorParaCorrecao != null;
 
+    // A lógica de inicialização agora é mais segura.
+    // Primeiro, definimos os modos com base nos widgets passados.
+    _isModoCorrecao = widget.expositorParaCorrecao != null;
+    _isModoCompletarPerfil = widget.authenticatedUser != null;
+
+    // Depois, preenchemos os controladores.
     if (_isModoCorrecao) {
       final e = widget.expositorParaCorrecao!;
       _emailController.text = e.email ?? '';
@@ -84,7 +90,6 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
       _situacaoSelecionada =
           kSituacoesExpositor.contains(e.situacao) ? e.situacao : null;
     } else if (_isModoCompletarPerfil) {
-      // Mudança: Preenche os campos com dados do login social
       final user = widget.authenticatedUser!;
       _emailController.text = user.email ?? '';
       _nomeController.text = user.displayName ?? '';
@@ -93,6 +98,20 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
 
   @override
   void dispose() {
+    // Verificamos se o cadastro não foi concluído e se estávamos no modo
+    // de completar perfil (ou seja, um novo usuário vindo de login social).
+    if (!_cadastroFoiConcluido && _isModoCompletarPerfil) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('Cadastro não concluído. Removendo usuário órfão: ${user.uid}');
+        // Deleta o usuário do Firebase Auth para manter a consistência.
+        user.delete().catchError((e) {
+          print('Erro ao remover usuário órfão: $e');
+        });
+      }
+    }
+
+    // O dispose original dos controladores.
     _emailController.dispose();
     _passwordController.dispose();
     _nomeController.dispose();
@@ -160,6 +179,8 @@ class _CadastroExpositorScreenState extends State<CadastroExpositorScreen> {
 
       await _firestoreService.setUsuario(usuarioParaSalvar);
       await _firestoreService.setExpositor(expositorParaSalvar);
+
+      _cadastroFoiConcluido = true;
 
       if (mounted) {
         await showDialog(
