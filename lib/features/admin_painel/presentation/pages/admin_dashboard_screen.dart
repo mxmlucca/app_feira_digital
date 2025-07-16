@@ -3,12 +3,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../../features/expositor/domain/entities/expositor.dart';
-import '../../features/feira_evento/domain/entities/feira.dart';
-import '../../services/firestore_service.dart';
-import '../../features/feira_evento/presentation/pages/feira_detail_screen.dart';
-import '../../features/feira_evento/presentation/pages/feira_form_screen.dart';
-import '../../features/expositor/presentation/pages/admin_aprovacao_screen.dart';
+import '../../../expositor/domain/entities/expositor.dart';
+import '../../../feira_evento/domain/entities/feira.dart';
+import '../../../../services/firestore_service.dart';
+import '../../../feira_evento/presentation/pages/feira_detail_screen.dart';
+import '../../../feira_evento/presentation/pages/feira_form_screen.dart';
+import '../../../expositor/presentation/pages/admin_aprovacao_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});

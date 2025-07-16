@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../auth/presentation/controllers/user_provider.dart';
 
 // Importações das Telas
-import '../../../../screens/admin/admin_dashboard_screen.dart';
+import '../../../admin_painel/presentation/pages/admin_dashboard_screen.dart';
 import '../../../expositor/presentation/pages/admin_aprovacao_screen.dart';
 import '../../../expositor/presentation/pages/expositor_list_screen.dart';
 import '../../../feira_evento/presentation/pages/feira_list_screen.dart';

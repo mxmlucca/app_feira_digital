@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/expositor.dart';
 import '../../../../services/firestore_service.dart';
 import 'package:intl/intl.dart';
-import '../../../../screens/admin/admin_expositor_detail_screen.dart';
+import '../../../admin_painel/presentation/pages/admin_expositor_detail_screen.dart';
 
 class AdminAprovacaoScreen extends StatefulWidget {
   const AdminAprovacaoScreen({super.key});
