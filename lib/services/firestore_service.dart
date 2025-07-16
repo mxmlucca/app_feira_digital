@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rxdart/rxdart.dart';
-import '../models/expositor.dart';
-import '../models/feira.dart';
-import '../models/usuario.dart';
-import '../models/configuracao_feira.dart';
-import '../models/registro_presenca.dart';
+import '../features/expositor/domain/entities/expositor.dart';
+import '../features/feira_evento/domain/entities/feira.dart';
+import '../features/auth/domain/entities/usuario.dart';
+import '../features/feira_evento/domain/entities/configuracao_feira.dart';
+import '../features/feira_evento/domain/entities/registro_presenca.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
