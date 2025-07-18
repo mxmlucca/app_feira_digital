@@ -33,7 +33,10 @@ class MainApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Feira Digital App',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
+      // Theme
+      themeMode: ThemeMode.system,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       routerConfig: router,
     );
   }

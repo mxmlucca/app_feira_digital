@@ -1,52 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart'; // Importe o provider
+// Remova as importações da feature de teste se ainda estiverem lá
 
-// Importe as dependências da feature de teste
-import '../../features/test_flow/presentation/controllers/test_page_controller.dart';
-import '../../features/test_flow/presentation/pages/test_page.dart';
-import '../di/service_locator.dart';
+// Importe a sua nova LoginPage
+import '../../features/auth/presentation/pages/login_page.dart';
 
-// Adicione um botão na sua HomePage para navegar para a tela de teste
+// Esta é a sua página inicial antiga, podemos mantê-la para referência
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Feira Digital App'),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => context.go('/test'), // Ação de navegação
-              child: const Text('Test Architecture Flow'),
-            ),
-          ],
+        child: ElevatedButton(
+          onPressed: () => context.go('/login'),
+          child: const Text('Ir para Login'),
         ),
       ),
     );
   }
 }
 
+// A configuração do GoRouter, conforme definido na arquitetura [cite: 2]
 final router = GoRouter(
-  initialLocation: '/',
+  // ALTERADO: A rota inicial agora é '/login'
+  initialLocation: '/login',
+
   routes: [
     GoRoute(path: '/', builder: (context, state) => const HomePage()),
-    // Nova rota para a página de teste
+    // ADICIONADO: A definição da rota para a página de login
     GoRoute(
-      path: '/test',
-      builder: (context, state) {
-        // Usamos o ChangeNotifierProvider para injetar o controller na árvore de widgets [cite: 71]
-        return ChangeNotifierProvider(
-          create: (_) => getIt<TestPageController>(),
-          child: const TestPage(),
-        );
-      },
+      path: '/login',
+      builder:
+          (context, state) =>
+              const LoginPage(), // Aponta para a tela de login que criamos [cite: 3]
     ),
   ],
-  redirect: (context, state) {
-    return null;
-  },
 );
