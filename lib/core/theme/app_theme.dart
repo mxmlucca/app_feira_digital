@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Cor primária extraída do logo da Feira dos Trilhos
-  static const Color _primaryBlue = Color(0xFF0052CC); // Um azul royal vibrante
+  static const Color _primaryBlue = Color(0xFF22468C); // Um azul royal vibrante
 
   // --- TEMA CLARO ---
   static ThemeData get lightTheme {
